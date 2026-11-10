@@ -40,10 +40,17 @@ class DeviceController extends Controller
 
         $validated = $request->validate([
             'crop' => ['required', 'string', Rule::in(array_keys(HydroponicAdvisorService::crops()))],
+            'temperature_min' => ['required', 'numeric'],
+            'temperature_max' => ['required', 'numeric', 'gte:temperature_min'],
+            'ph_min' => ['required', 'numeric'],
+            'ph_max' => ['required', 'numeric', 'gte:ph_min'],
         ]);
 
-        $alerts->applyCropToDevice($device, $validated['crop']);
+        $alerts->applyCropToDevice($device, $validated['crop'], [
+            'temperature' => [$validated['temperature_min'], $validated['temperature_max']],
+            'ph' => [$validated['ph_min'], $validated['ph_max']],
+        ]);
 
-        return back()->with('success', 'Cultivo actualizado. Los rangos de temperatura y pH se ajustaron.');
+        return back()->with('success', 'Cultivo y rangos guardados. Hydrolab comparará automáticamente las lecturas del ESP32.');
     }
 }

@@ -23,8 +23,26 @@ const { device, sensors, lastUpdatedAt, liveError, fetching, autoRefresh, refres
     includeChart: false,
 });
 
+const sensorRange = (type, fallback) => {
+    const sensor = (props.sensors ?? []).find((item) => item.type === type);
+    if (sensor?.min_threshold != null && sensor?.max_threshold != null) {
+        return [Number(sensor.min_threshold), Number(sensor.max_threshold)];
+    }
+
+    return fallback;
+};
+
+const initialCrop = props.device?.active_crop ?? 'general';
+const initialProfile = props.crops.find((crop) => crop.id === initialCrop) ?? props.crops[0];
+const [initialTempMin, initialTempMax] = sensorRange('temperature', initialProfile?.temperature ?? [18, 28]);
+const [initialPhMin, initialPhMax] = sensorRange('ph', initialProfile?.ph ?? [5.5, 6.5]);
+
 const cropForm = useForm({
-    crop: props.device?.active_crop ?? 'general',
+    crop: initialCrop,
+    temperature_min: initialTempMin,
+    temperature_max: initialTempMax,
+    ph_min: initialPhMin,
+    ph_max: initialPhMax,
 });
 
 const selectedCrop = computed(
@@ -32,6 +50,18 @@ const selectedCrop = computed(
 );
 
 const flashSuccess = computed(() => page.props.flash?.success ?? null);
+
+const applyCropDefaults = (cropId) => {
+    const crop = props.crops.find((item) => item.id === cropId);
+    if (!crop) {
+        return;
+    }
+
+    cropForm.temperature_min = crop.temperature[0];
+    cropForm.temperature_max = crop.temperature[1];
+    cropForm.ph_min = crop.ph[0];
+    cropForm.ph_max = crop.ph[1];
+};
 
 const saveCrop = () => {
     cropForm.patch(route('device.crop'), {
@@ -41,10 +71,10 @@ const saveCrop = () => {
 };
 
 watch(
-    () => device.value?.active_crop,
-    (crop) => {
-        if (crop && !cropForm.processing) {
-            cropForm.crop = crop;
+    () => cropForm.crop,
+    (cropId, previous) => {
+        if (previous !== undefined && cropId !== previous) {
+            applyCropDefaults(cropId);
         }
     },
 );
@@ -96,6 +126,20 @@ const lastSeen = (value) => {
         dateStyle: 'medium',
         timeStyle: 'short',
     }).format(new Date(value));
+};
+
+const sensorStatusLabel = (status) => {
+    if (status === 'high') {
+        return 'Alto';
+    }
+    if (status === 'low') {
+        return 'Bajo';
+    }
+    if (status === 'ok') {
+        return 'Óptimo';
+    }
+
+    return 'Sin dato';
 };
 
 const themes = {
@@ -193,9 +237,9 @@ const themes = {
             <section class="hl-card p-6">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                        <h3 class="text-lg font-bold text-hl-navy">Cultivo activo</h3>
+                        <h3 class="text-lg font-bold text-hl-navy">Cultivo y rangos</h3>
                         <p class="mt-1 text-sm text-slate-400">
-                            Elige qué estás cultivando. Se ajustan los rangos de temperatura y pH; Gemini solo se consulta si salen de rango.
+                            Elige el cultivo, ajusta temperatura y pH a mano, guarda, y Hydrolab comparará cada lectura del ESP32 con esos valores.
                         </p>
                     </div>
                     <span class="rounded-full bg-hl-blue/10 px-3 py-1 text-xs font-semibold text-hl-blue">
@@ -214,9 +258,65 @@ const themes = {
                         <p class="font-bold text-hl-navy">{{ crop.label }}</p>
                         <p class="mt-1 text-xs text-slate-500">{{ crop.notes }}</p>
                         <p class="mt-3 text-xs font-semibold text-slate-600">
-                            Temp {{ crop.temperature[0] }}–{{ crop.temperature[1] }} °C · pH {{ crop.ph[0] }}–{{ crop.ph[1] }}
+                            Sugerido: Temp {{ crop.temperature[0] }}–{{ crop.temperature[1] }} °C · pH {{ crop.ph[0] }}–{{ crop.ph[1] }}
                         </p>
                     </label>
+                </div>
+
+                <div class="mt-6 grid gap-4 md:grid-cols-2">
+                    <div class="rounded-2xl border border-slate-100 p-4">
+                        <p class="text-sm font-bold text-hl-navy">Temperatura (°C)</p>
+                        <div class="mt-3 grid grid-cols-2 gap-3">
+                            <label class="text-xs font-medium text-slate-500">
+                                Mínimo
+                                <input
+                                    v-model.number="cropForm.temperature_min"
+                                    type="number"
+                                    step="0.1"
+                                    class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                                />
+                            </label>
+                            <label class="text-xs font-medium text-slate-500">
+                                Máximo
+                                <input
+                                    v-model.number="cropForm.temperature_max"
+                                    type="number"
+                                    step="0.1"
+                                    class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                                />
+                            </label>
+                        </div>
+                        <p v-if="cropForm.errors.temperature_min || cropForm.errors.temperature_max" class="mt-2 text-xs text-red-500">
+                            {{ cropForm.errors.temperature_min || cropForm.errors.temperature_max }}
+                        </p>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-100 p-4">
+                        <p class="text-sm font-bold text-hl-navy">pH</p>
+                        <div class="mt-3 grid grid-cols-2 gap-3">
+                            <label class="text-xs font-medium text-slate-500">
+                                Mínimo
+                                <input
+                                    v-model.number="cropForm.ph_min"
+                                    type="number"
+                                    step="0.1"
+                                    class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                                />
+                            </label>
+                            <label class="text-xs font-medium text-slate-500">
+                                Máximo
+                                <input
+                                    v-model.number="cropForm.ph_max"
+                                    type="number"
+                                    step="0.1"
+                                    class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                                />
+                            </label>
+                        </div>
+                        <p v-if="cropForm.errors.ph_min || cropForm.errors.ph_max" class="mt-2 text-xs text-red-500">
+                            {{ cropForm.errors.ph_min || cropForm.errors.ph_max }}
+                        </p>
+                    </div>
                 </div>
 
                 <p v-if="selectedCrop" class="mt-4 text-sm text-slate-500">{{ selectedCrop.notes }}</p>
@@ -224,10 +324,10 @@ const themes = {
                 <button
                     type="button"
                     class="mt-5 inline-flex items-center rounded-2xl bg-hl-blue px-4 py-2.5 text-sm font-semibold text-white shadow-card hover:bg-blue-600 disabled:opacity-70"
-                    :disabled="cropForm.processing || cropForm.crop === device.active_crop"
+                    :disabled="cropForm.processing"
                     @click="saveCrop"
                 >
-                    {{ cropForm.processing ? 'Guardando…' : 'Guardar cultivo' }}
+                    {{ cropForm.processing ? 'Guardando…' : 'Guardar cultivo y rangos' }}
                 </button>
             </section>
 
@@ -242,8 +342,10 @@ const themes = {
             </section>
 
             <section class="hl-card p-6">
-                <h3 class="text-lg font-bold text-hl-navy">Sensores</h3>
-                <p class="mt-1 text-sm text-slate-400">Rangos ideales y última lectura de cada parámetro.</p>
+                <h3 class="text-lg font-bold text-hl-navy">Sensores en vivo</h3>
+                <p class="mt-1 text-sm text-slate-400">
+                    Comparación automática con los rangos guardados. Si temperatura o pH salen del rango, se consulta Gemini.
+                </p>
 
                 <div class="mt-5 grid gap-4 md:grid-cols-2">
                     <article
@@ -262,9 +364,13 @@ const themes = {
                                 <p class="font-semibold text-hl-navy">{{ sensor.name }}</p>
                                 <span
                                     class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                                    :class="sensor.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'"
+                                    :class="{
+                                        'bg-emerald-50 text-emerald-600': sensor.status === 'ok',
+                                        'bg-amber-50 text-amber-700': sensor.status === 'low' || sensor.status === 'high',
+                                        'bg-slate-100 text-slate-500': !sensor.status || sensor.status === 'unknown',
+                                    }"
                                 >
-                                    {{ sensor.is_active ? 'Activo' : 'Inactivo' }}
+                                    {{ sensorStatusLabel(sensor.status) }}
                                 </span>
                             </div>
                             <p class="mt-1 text-xl font-extrabold text-hl-navy">

@@ -14,12 +14,24 @@ class CropAlertService
     }
 
     /**
-     * Apply crop ideal ranges to the device sensors (temperature + pH for now).
+     * Save the active crop and optional manual temperature/pH ranges.
+     * Custom ranges override the crop defaults when provided.
+     *
+     * @param  array{temperature?: array{0: float|int|string, 1: float|int|string}|null, ph?: array{0: float|int|string, 1: float|int|string}|null}  $ranges
      */
-    public function applyCropToDevice(Device $device, string $crop): Device
+    public function applyCropToDevice(Device $device, string $crop, array $ranges = []): Device
     {
         $crop = $this->advisor->normalizeCrop($crop);
         $profile = HydroponicAdvisorService::crops()[$crop];
+
+        foreach (['temperature', 'ph'] as $type) {
+            if (isset($ranges[$type]) && is_array($ranges[$type]) && count($ranges[$type]) >= 2) {
+                $profile[$type] = [
+                    (float) $ranges[$type][0],
+                    (float) $ranges[$type][1],
+                ];
+            }
+        }
 
         $device->forceFill(['active_crop' => $crop])->save();
 
@@ -29,6 +41,10 @@ class CropAlertService
             }
 
             [$min, $max] = $profile[$sensor->type];
+
+            if ($min > $max) {
+                [$min, $max] = [$max, $min];
+            }
 
             $sensor->forceFill([
                 'min_threshold' => $min,
