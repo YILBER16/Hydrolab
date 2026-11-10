@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AnalysisController;
+use App\Http\Controllers\CropController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\HistoryController;
@@ -23,6 +24,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/analysis', [AnalysisController::class, 'analyze'])->name('analysis.run');
     Route::get('/dispositivo', [DeviceController::class, 'index'])->name('device');
     Route::patch('/dispositivo/cultivo', [DeviceController::class, 'updateCrop'])->name('device.crop');
+    Route::post('/cultivos', [CropController::class, 'store'])->name('crops.store');
+    Route::patch('/cultivos/{crop}', [CropController::class, 'update'])->name('crops.update');
+    Route::delete('/cultivos/{crop}', [CropController::class, 'destroy'])->name('crops.destroy');
 });
 
 

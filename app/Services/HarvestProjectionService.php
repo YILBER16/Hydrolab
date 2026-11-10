@@ -9,21 +9,6 @@ use Illuminate\Support\Carbon;
 
 class HarvestProjectionService
 {
-    /**
-     * Typical days from transplant/sowing to harvest.
-     *
-     * @return array<string, int>
-     */
-    public static function defaultHarvestDays(): array
-    {
-        return [
-            'general' => 40,
-            'lechuga' => 35,
-            'albahaca' => 32,
-            'tomate' => 70,
-        ];
-    }
-
     public function forDevice(?Device $device): ?array
     {
         if (! $device || ! $device->planted_at) {
@@ -31,8 +16,10 @@ class HarvestProjectionService
         }
 
         $crop = $device->active_crop ?: 'general';
-        $defaults = self::defaultHarvestDays();
-        $plannedDays = (int) ($device->harvest_days ?: ($defaults[$crop] ?? 40));
+        $profile = HydroponicAdvisorService::crops()[$crop]
+            ?? HydroponicAdvisorService::crops()['general']
+            ?? ['harvest_days' => 40, 'label' => 'Cultivo'];
+        $plannedDays = (int) ($device->harvest_days ?: ($profile['harvest_days'] ?? 40));
         $plannedDays = max(7, min(180, $plannedDays));
 
         $plantedAt = $device->planted_at->copy()->startOfDay();
@@ -63,7 +50,7 @@ class HarvestProjectionService
             }
         }
 
-        $cropMeta = HydroponicAdvisorService::crops()[$crop] ?? HydroponicAdvisorService::crops()['general'];
+        $cropMeta = $profile;
 
         return [
             'crop' => $crop,

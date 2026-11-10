@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Crop;
 use App\Models\Device;
 use App\Models\Reading;
 use App\Models\Sensor;
@@ -10,15 +11,18 @@ use Throwable;
 class HydroponicAdvisorService
 {
     /**
+     * Built-in fallback when the crops table is empty or unavailable.
+     *
      * @return array<string, array{
      *     label: string,
      *     notes: string,
      *     temperature: array{0: float, 1: float},
      *     ph: array{0: float, 1: float},
-     *     harvest_days: int
+     *     harvest_days: int,
+     *     is_system?: bool
      * }>
      */
-    public static function crops(): array
+    public static function defaultCrops(): array
     {
         return [
             'general' => [
@@ -27,6 +31,7 @@ class HydroponicAdvisorService
                 'temperature' => [18.0, 28.0],
                 'ph' => [5.5, 6.5],
                 'harvest_days' => 40,
+                'is_system' => true,
             ],
             'lechuga' => [
                 'label' => 'Lechuga',
@@ -34,6 +39,7 @@ class HydroponicAdvisorService
                 'temperature' => [18.0, 24.0],
                 'ph' => [5.5, 6.5],
                 'harvest_days' => 35,
+                'is_system' => true,
             ],
             'albahaca' => [
                 'label' => 'Albahaca',
@@ -41,6 +47,7 @@ class HydroponicAdvisorService
                 'temperature' => [20.0, 26.0],
                 'ph' => [5.5, 6.5],
                 'harvest_days' => 32,
+                'is_system' => true,
             ],
             'tomate' => [
                 'label' => 'Tomate cherry',
@@ -48,22 +55,76 @@ class HydroponicAdvisorService
                 'temperature' => [18.0, 26.0],
                 'ph' => [5.5, 6.5],
                 'harvest_days' => 70,
+                'is_system' => true,
             ],
         ];
     }
 
     /**
-     * @return list<array{id: string, label: string, notes: string, temperature: array{0: float, 1: float}, ph: array{0: float, 1: float}, harvest_days: int}>
+     * @return array<string, array{
+     *     label: string,
+     *     notes: string,
+     *     temperature: array{0: float, 1: float},
+     *     ph: array{0: float, 1: float},
+     *     harvest_days: int,
+     *     is_system?: bool
+     * }>
+     */
+    public static function crops(): array
+    {
+        try {
+            Crop::ensureDefaults();
+
+            $fromDb = Crop::query()
+                ->active()
+                ->orderBy('is_system', 'desc')
+                ->orderBy('name')
+                ->get()
+                ->mapWithKeys(fn (Crop $crop) => [$crop->slug => $crop->toProfile()])
+                ->all();
+
+            if ($fromDb !== []) {
+                return $fromDb;
+            }
+        } catch (Throwable) {
+            // Table may not exist yet during first migrate.
+        }
+
+        return self::defaultCrops();
+    }
+
+    /**
+     * @return list<array{id: string, label: string, notes: string, temperature: array{0: float, 1: float}, ph: array{0: float, 1: float}, harvest_days: int, is_system?: bool, db_id?: int}>
      */
     public static function cropOptions(): array
     {
-        return collect(self::crops())->map(fn (array $crop, string $id) => [
+        try {
+            Crop::ensureDefaults();
+
+            $fromDb = Crop::query()
+                ->active()
+                ->orderBy('is_system', 'desc')
+                ->orderBy('name')
+                ->get()
+                ->map(fn (Crop $crop) => $crop->toOption())
+                ->values()
+                ->all();
+
+            if ($fromDb !== []) {
+                return $fromDb;
+            }
+        } catch (Throwable) {
+            // Table may not exist yet during first migrate.
+        }
+
+        return collect(self::defaultCrops())->map(fn (array $crop, string $id) => [
             'id' => $id,
             'label' => $crop['label'],
             'notes' => $crop['notes'],
             'temperature' => $crop['temperature'],
             'ph' => $crop['ph'],
             'harvest_days' => $crop['harvest_days'],
+            'is_system' => $crop['is_system'] ?? false,
         ])->values()->all();
     }
 

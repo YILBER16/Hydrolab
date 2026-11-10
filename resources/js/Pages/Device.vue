@@ -1,8 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MetricIcon from '@/Components/MetricIcon.vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { computed, watch } from 'vue';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
 import { useLiveSnapshot } from '@/composables/useLiveSnapshot';
 
 const props = defineProps({
@@ -56,6 +56,19 @@ const selectedCrop = computed(
 );
 
 const flashSuccess = computed(() => page.props.flash?.success ?? null);
+const flashError = computed(() => page.props.errors?.crop ?? null);
+
+const addingCrop = ref(false);
+
+const newCropForm = useForm({
+    name: '',
+    notes: '',
+    temperature_min: 18,
+    temperature_max: 28,
+    ph_min: 5.5,
+    ph_max: 6.5,
+    harvest_days: 40,
+});
 
 const applyCropDefaults = (cropId) => {
     const crop = props.crops.find((item) => item.id === cropId);
@@ -74,6 +87,33 @@ const saveCrop = () => {
     cropForm.patch(route('device.crop'), {
         preserveScroll: true,
         onSuccess: () => refresh(),
+    });
+};
+
+const saveNewCrop = () => {
+    newCropForm.post(route('crops.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            addingCrop.value = false;
+            newCropForm.reset();
+            newCropForm.clearErrors();
+            router.reload({ only: ['crops'] });
+        },
+    });
+};
+
+const deleteCrop = (crop) => {
+    if (!crop?.db_id || crop.is_system) {
+        return;
+    }
+
+    if (!confirm(`¿Eliminar el cultivo "${crop.label}"?`)) {
+        return;
+    }
+
+    router.delete(route('crops.destroy', crop.db_id), {
+        preserveScroll: true,
+        onSuccess: () => router.reload({ only: ['crops', 'device', 'harvest'] }),
     });
 };
 
@@ -197,6 +237,7 @@ const themes = {
         <div v-else class="space-y-5">
             <p v-if="liveError" class="text-sm font-semibold text-amber-600">{{ liveError }}</p>
             <p v-if="flashSuccess" class="text-sm font-semibold text-emerald-600">{{ flashSuccess }}</p>
+            <p v-if="flashError" class="text-sm font-semibold text-red-600">{{ flashError }}</p>
 
             <section class="hl-card p-6">
                 <div class="flex flex-wrap items-start justify-between gap-4">
@@ -254,19 +295,98 @@ const themes = {
                     </span>
                 </div>
 
+                <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-sm font-semibold text-hl-navy">Tipos disponibles</p>
+                    <button
+                        type="button"
+                        class="rounded-xl border border-hl-blue/30 bg-blue-50 px-3 py-1.5 text-xs font-bold text-hl-blue hover:bg-blue-100"
+                        @click="addingCrop = !addingCrop"
+                    >
+                        {{ addingCrop ? 'Cancelar' : '+ Añadir cultivo' }}
+                    </button>
+                </div>
+
+                <div v-if="addingCrop" class="mt-4 rounded-2xl border border-dashed border-hl-blue/40 bg-blue-50/40 p-4">
+                    <p class="text-sm font-bold text-hl-navy">Nuevo tipo de cultivo</p>
+                    <div class="mt-3 grid gap-3 md:grid-cols-2">
+                        <label class="text-xs font-medium text-slate-500 md:col-span-2">
+                            Nombre
+                            <input
+                                v-model="newCropForm.name"
+                                type="text"
+                                placeholder="Ej. Espinaca, Fresa, Rúcula"
+                                class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                            />
+                            <p v-if="newCropForm.errors.name" class="mt-1 text-xs text-red-500">{{ newCropForm.errors.name }}</p>
+                        </label>
+                        <label class="text-xs font-medium text-slate-500 md:col-span-2">
+                            Notas (opcional)
+                            <textarea
+                                v-model="newCropForm.notes"
+                                rows="2"
+                                class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                            />
+                        </label>
+                        <label class="text-xs font-medium text-slate-500">
+                            Temp mín (°C)
+                            <input v-model.number="newCropForm.temperature_min" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                        </label>
+                        <label class="text-xs font-medium text-slate-500">
+                            Temp máx (°C)
+                            <input v-model.number="newCropForm.temperature_max" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                        </label>
+                        <label class="text-xs font-medium text-slate-500">
+                            pH mín
+                            <input v-model.number="newCropForm.ph_min" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                        </label>
+                        <label class="text-xs font-medium text-slate-500">
+                            pH máx
+                            <input v-model.number="newCropForm.ph_max" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                        </label>
+                        <label class="text-xs font-medium text-slate-500 md:col-span-2">
+                            Días a cosecha
+                            <input v-model.number="newCropForm.harvest_days" type="number" min="7" max="180" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                        </label>
+                    </div>
+                    <button
+                        type="button"
+                        class="mt-4 inline-flex rounded-2xl bg-hl-blue px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-600 disabled:opacity-70"
+                        :disabled="newCropForm.processing"
+                        @click="saveNewCrop"
+                    >
+                        {{ newCropForm.processing ? 'Guardando…' : 'Crear cultivo' }}
+                    </button>
+                </div>
+
                 <div class="mt-5 grid gap-3 sm:grid-cols-2">
                     <label
                         v-for="crop in crops"
                         :key="crop.id"
-                        class="cursor-pointer rounded-2xl border p-4 transition"
+                        class="relative cursor-pointer rounded-2xl border p-4 transition"
                         :class="cropForm.crop === crop.id ? 'border-hl-blue bg-blue-50/70 shadow-card' : 'border-slate-100 hover:border-slate-200'"
                     >
                         <input v-model="cropForm.crop" type="radio" class="sr-only" :value="crop.id" />
-                        <p class="font-bold text-hl-navy">{{ crop.label }}</p>
+                        <div class="flex items-start justify-between gap-2">
+                            <p class="font-bold text-hl-navy">{{ crop.label }}</p>
+                            <span
+                                class="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                                :class="crop.is_system ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-600'"
+                            >
+                                {{ crop.is_system ? 'Sistema' : 'Custom' }}
+                            </span>
+                        </div>
                         <p class="mt-1 text-xs text-slate-500">{{ crop.notes }}</p>
                         <p class="mt-3 text-xs font-semibold text-slate-600">
                             Sugerido: Temp {{ crop.temperature[0] }}–{{ crop.temperature[1] }} °C · pH {{ crop.ph[0] }}–{{ crop.ph[1] }}
                         </p>
+                        <button
+                            v-if="!crop.is_system && crop.db_id"
+                            type="button"
+                            class="mt-3 text-xs font-semibold text-red-500 hover:underline"
+                            @click.prevent="deleteCrop(crop)"
+                        >
+                            Eliminar
+                        </button>
                     </label>
                 </div>
 

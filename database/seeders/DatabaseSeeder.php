@@ -24,6 +24,9 @@ class DatabaseSeeder extends Seeder
             ],
         );
 
-        $this->call(DeviceSeeder::class);
+        $this->call([
+            CropSeeder::class,
+            DeviceSeeder::class,
+        ]);
     }
 }
