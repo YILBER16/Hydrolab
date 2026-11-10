@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\Reading;
+use App\Services\CropAlertService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+
 
 class ReadingController extends Controller
 {
@@ -26,7 +28,7 @@ class ReadingController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, CropAlertService $cropAlerts): JsonResponse
     {
         /** @var Device $device */
         $device = $request->attributes->get('device');
@@ -88,6 +90,8 @@ class ReadingController extends Controller
 
         $device->refresh();
 
+        $alert = $cropAlerts->maybeAlert($device, $created);
+
         return response()->json([
             'message' => 'Readings stored.',
             'stored' => count($created),
@@ -95,6 +99,8 @@ class ReadingController extends Controller
             'unknown_types' => $unknown,
             'pump_on' => $device->pump_on,
             'device_online' => $device->isOnline(),
+            'active_crop' => $device->active_crop,
+            'ai_alert' => $alert,
         ], 201);
     }
 }

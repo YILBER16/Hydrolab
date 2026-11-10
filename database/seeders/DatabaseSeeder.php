@@ -15,11 +15,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        User::factory()->create([
-            'name' => 'Hydrolab Admin',
-            'email' => 'admin@hydrolab.test',
-            'password' => 'password',
-        ]);
+        User::query()->updateOrCreate(
+            ['email' => 'admin@hydrolab.test'],
+            [
+                'name' => 'Hydrolab Admin',
+                'password' => 'password',
+                'email_verified_at' => now(),
+            ],
+        );
 
         $this->call(DeviceSeeder::class);
     }

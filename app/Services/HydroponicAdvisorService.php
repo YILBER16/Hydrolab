@@ -10,7 +10,12 @@ use Throwable;
 class HydroponicAdvisorService
 {
     /**
-     * @return array<string, array{label: string, notes: string, temperature: array{0: float, 1: float}}>
+     * @return array<string, array{
+     *     label: string,
+     *     notes: string,
+     *     temperature: array{0: float, 1: float},
+     *     ph: array{0: float, 1: float}
+     * }>
      */
     public static function crops(): array
     {
@@ -19,23 +24,41 @@ class HydroponicAdvisorService
                 'label' => 'Cultivo general',
                 'notes' => 'Rangos del sistema Hydrolab. Adecuado si aún no defines el cultivo.',
                 'temperature' => [18.0, 28.0],
+                'ph' => [5.5, 6.5],
             ],
             'lechuga' => [
                 'label' => 'Lechuga',
                 'notes' => 'Prefiere agua fresca. Temperatura ideal 18-24 °C, pH 5.5-6.5, EC 0.8-1.2 mS/cm.',
                 'temperature' => [18.0, 24.0],
+                'ph' => [5.5, 6.5],
             ],
             'albahaca' => [
                 'label' => 'Albahaca',
                 'notes' => 'Tolera un poco más de calor. Temperatura 20-26 °C, pH 5.5-6.5, EC 1.0-1.6 mS/cm.',
                 'temperature' => [20.0, 26.0],
+                'ph' => [5.5, 6.5],
             ],
             'tomate' => [
                 'label' => 'Tomate cherry',
                 'notes' => 'Necesita más nutrientes. Temperatura 18-26 °C, pH 5.5-6.5, EC 2.0-3.5 mS/cm.',
                 'temperature' => [18.0, 26.0],
+                'ph' => [5.5, 6.5],
             ],
         ];
+    }
+
+    /**
+     * @return list<array{id: string, label: string, notes: string, temperature: array{0: float, 1: float}, ph: array{0: float, 1: float}}>
+     */
+    public static function cropOptions(): array
+    {
+        return collect(self::crops())->map(fn (array $crop, string $id) => [
+            'id' => $id,
+            'label' => $crop['label'],
+            'notes' => $crop['notes'],
+            'temperature' => $crop['temperature'],
+            'ph' => $crop['ph'],
+        ])->values()->all();
     }
 
     public function __construct(

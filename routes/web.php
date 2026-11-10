@@ -21,7 +21,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/analysis', [AnalysisController::class, 'index'])->name('analysis');
     Route::post('/analysis', [AnalysisController::class, 'analyze'])->name('analysis.run');
     Route::get('/dispositivo', [DeviceController::class, 'index'])->name('device');
+    Route::patch('/dispositivo/cultivo', [DeviceController::class, 'updateCrop'])->name('device.crop');
 });
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

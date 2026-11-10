@@ -14,6 +14,11 @@ class Device extends Model
         'is_active',
         'last_seen_at',
         'pump_on',
+        'active_crop',
+        'last_ai_advice',
+        'last_ai_source',
+        'last_ai_alert_at',
+        'last_ai_alert_types',
     ];
 
     protected function casts(): array
@@ -22,6 +27,8 @@ class Device extends Model
             'is_active' => 'boolean',
             'pump_on' => 'boolean',
             'last_seen_at' => 'datetime',
+            'last_ai_alert_at' => 'datetime',
+            'last_ai_alert_types' => 'array',
         ];
     }
 

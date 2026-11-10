@@ -64,6 +64,10 @@ class DashboardSnapshotService
 
     public function devicePayload(Device $device): array
     {
+        $cropId = $device->active_crop ?: 'general';
+        $crops = HydroponicAdvisorService::crops();
+        $crop = $crops[$cropId] ?? $crops['general'];
+
         return [
             'id' => $device->id,
             'name' => $device->name,
@@ -72,6 +76,13 @@ class DashboardSnapshotService
             'is_active' => (bool) $device->is_active,
             'last_seen_at' => $device->last_seen_at?->toIso8601String(),
             'pump_on' => $device->pump_on,
+            'active_crop' => $cropId,
+            'active_crop_label' => $crop['label'],
+            'active_crop_notes' => $crop['notes'],
+            'last_ai_advice' => $device->last_ai_advice,
+            'last_ai_source' => $device->last_ai_source,
+            'last_ai_alert_at' => $device->last_ai_alert_at?->toIso8601String(),
+            'last_ai_alert_types' => $device->last_ai_alert_types ?? [],
         ];
     }
 

@@ -1,8 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MetricIcon from '@/Components/MetricIcon.vue';
-import { Head } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { computed, watch } from 'vue';
 import { useLiveSnapshot } from '@/composables/useLiveSnapshot';
 
 const props = defineProps({
@@ -11,12 +11,43 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    crops: {
+        type: Array,
+        default: () => [],
+    },
 });
 
+const page = usePage();
 const { device, sensors, lastUpdatedAt, liveError, fetching, autoRefresh, refresh } = useLiveSnapshot(props, {
     intervalMs: 4000,
     includeChart: false,
 });
+
+const cropForm = useForm({
+    crop: props.device?.active_crop ?? 'general',
+});
+
+const selectedCrop = computed(
+    () => props.crops.find((crop) => crop.id === cropForm.crop) ?? props.crops[0],
+);
+
+const flashSuccess = computed(() => page.props.flash?.success ?? null);
+
+const saveCrop = () => {
+    cropForm.patch(route('device.crop'), {
+        preserveScroll: true,
+        onSuccess: () => refresh(),
+    });
+};
+
+watch(
+    () => device.value?.active_crop,
+    (crop) => {
+        if (crop && !cropForm.processing) {
+            cropForm.crop = crop;
+        }
+    },
+);
 
 const lastUpdatedLabel = computed(() => {
     if (!lastUpdatedAt.value) {
@@ -114,6 +145,7 @@ const themes = {
 
         <div v-else class="space-y-5">
             <p v-if="liveError" class="text-sm font-semibold text-amber-600">{{ liveError }}</p>
+            <p v-if="flashSuccess" class="text-sm font-semibold text-emerald-600">{{ flashSuccess }}</p>
 
             <section class="hl-card p-6">
                 <div class="flex flex-wrap items-start justify-between gap-4">
@@ -156,6 +188,57 @@ const themes = {
                         <p class="mt-1 truncate font-mono text-sm font-semibold text-hl-navy">{{ device.token_preview }}</p>
                     </div>
                 </div>
+            </section>
+
+            <section class="hl-card p-6">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <h3 class="text-lg font-bold text-hl-navy">Cultivo activo</h3>
+                        <p class="mt-1 text-sm text-slate-400">
+                            Elige qué estás cultivando. Se ajustan los rangos de temperatura y pH; Gemini solo se consulta si salen de rango.
+                        </p>
+                    </div>
+                    <span class="rounded-full bg-hl-blue/10 px-3 py-1 text-xs font-semibold text-hl-blue">
+                        {{ device.active_crop_label || 'Sin cultivo' }}
+                    </span>
+                </div>
+
+                <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                    <label
+                        v-for="crop in crops"
+                        :key="crop.id"
+                        class="cursor-pointer rounded-2xl border p-4 transition"
+                        :class="cropForm.crop === crop.id ? 'border-hl-blue bg-blue-50/70 shadow-card' : 'border-slate-100 hover:border-slate-200'"
+                    >
+                        <input v-model="cropForm.crop" type="radio" class="sr-only" :value="crop.id" />
+                        <p class="font-bold text-hl-navy">{{ crop.label }}</p>
+                        <p class="mt-1 text-xs text-slate-500">{{ crop.notes }}</p>
+                        <p class="mt-3 text-xs font-semibold text-slate-600">
+                            Temp {{ crop.temperature[0] }}–{{ crop.temperature[1] }} °C · pH {{ crop.ph[0] }}–{{ crop.ph[1] }}
+                        </p>
+                    </label>
+                </div>
+
+                <p v-if="selectedCrop" class="mt-4 text-sm text-slate-500">{{ selectedCrop.notes }}</p>
+
+                <button
+                    type="button"
+                    class="mt-5 inline-flex items-center rounded-2xl bg-hl-blue px-4 py-2.5 text-sm font-semibold text-white shadow-card hover:bg-blue-600 disabled:opacity-70"
+                    :disabled="cropForm.processing || cropForm.crop === device.active_crop"
+                    @click="saveCrop"
+                >
+                    {{ cropForm.processing ? 'Guardando…' : 'Guardar cultivo' }}
+                </button>
+            </section>
+
+            <section v-if="device.last_ai_advice" class="hl-card p-6">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="text-lg font-bold text-hl-navy">Última alerta IA</h3>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        {{ device.last_ai_source || 'ia' }} · {{ lastSeen(device.last_ai_alert_at) }}
+                    </span>
+                </div>
+                <pre class="mt-4 whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700">{{ device.last_ai_advice }}</pre>
             </section>
 
             <section class="hl-card p-6">
