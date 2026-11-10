@@ -15,6 +15,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    harvest: {
+        type: Object,
+        default: null,
+    },
 });
 
 const page = usePage();
@@ -43,6 +47,8 @@ const cropForm = useForm({
     temperature_max: initialTempMax,
     ph_min: initialPhMin,
     ph_max: initialPhMax,
+    planted_at: props.device?.planted_at ?? '',
+    harvest_days: props.device?.harvest_days ?? initialProfile?.harvest_days ?? 40,
 });
 
 const selectedCrop = computed(
@@ -61,6 +67,7 @@ const applyCropDefaults = (cropId) => {
     cropForm.temperature_max = crop.temperature[1];
     cropForm.ph_min = crop.ph[0];
     cropForm.ph_max = crop.ph[1];
+    cropForm.harvest_days = crop.harvest_days;
 };
 
 const saveCrop = () => {
@@ -319,6 +326,38 @@ const themes = {
                     </div>
                 </div>
 
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <label class="rounded-2xl border border-slate-100 p-4 text-xs font-medium text-slate-500">
+                        Fecha de siembra / trasplante
+                        <input
+                            v-model="cropForm.planted_at"
+                            type="date"
+                            class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                        />
+                        <p v-if="cropForm.errors.planted_at" class="mt-2 text-xs text-red-500">{{ cropForm.errors.planted_at }}</p>
+                    </label>
+                    <label class="rounded-2xl border border-slate-100 p-4 text-xs font-medium text-slate-500">
+                        Días estimados a cosecha
+                        <input
+                            v-model.number="cropForm.harvest_days"
+                            type="number"
+                            min="7"
+                            max="180"
+                            class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                        />
+                        <p class="mt-2 text-[11px] text-slate-400">Sugerido para este cultivo: {{ selectedCrop?.harvest_days ?? '—' }} días</p>
+                        <p v-if="cropForm.errors.harvest_days" class="mt-2 text-xs text-red-500">{{ cropForm.errors.harvest_days }}</p>
+                    </label>
+                </div>
+
+                <div v-if="harvest" class="mt-4 rounded-2xl bg-emerald-50/70 p-4 text-sm text-emerald-800">
+                    <p class="font-bold">Proyección actual: {{ harvest.status_label }}</p>
+                    <p class="mt-1">{{ harvest.summary }}</p>
+                    <p class="mt-1 text-xs font-semibold">
+                        {{ harvest.progress_percent }}% · cosecha estimada {{ harvest.harvest_date_label }}
+                    </p>
+                </div>
+
                 <p v-if="selectedCrop" class="mt-4 text-sm text-slate-500">{{ selectedCrop.notes }}</p>
 
                 <button
@@ -327,7 +366,7 @@ const themes = {
                     :disabled="cropForm.processing"
                     @click="saveCrop"
                 >
-                    {{ cropForm.processing ? 'Guardando…' : 'Guardar cultivo y rangos' }}
+                    {{ cropForm.processing ? 'Guardando…' : 'Guardar cultivo, rangos y cosecha' }}
                 </button>
             </section>
 

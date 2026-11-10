@@ -14,7 +14,8 @@ class HydroponicAdvisorService
      *     label: string,
      *     notes: string,
      *     temperature: array{0: float, 1: float},
-     *     ph: array{0: float, 1: float}
+     *     ph: array{0: float, 1: float},
+     *     harvest_days: int
      * }>
      */
     public static function crops(): array
@@ -25,30 +26,34 @@ class HydroponicAdvisorService
                 'notes' => 'Rangos del sistema Hydrolab. Adecuado si aún no defines el cultivo.',
                 'temperature' => [18.0, 28.0],
                 'ph' => [5.5, 6.5],
+                'harvest_days' => 40,
             ],
             'lechuga' => [
                 'label' => 'Lechuga',
                 'notes' => 'Prefiere agua fresca. Temperatura ideal 18-24 °C, pH 5.5-6.5, EC 0.8-1.2 mS/cm.',
                 'temperature' => [18.0, 24.0],
                 'ph' => [5.5, 6.5],
+                'harvest_days' => 35,
             ],
             'albahaca' => [
                 'label' => 'Albahaca',
                 'notes' => 'Tolera un poco más de calor. Temperatura 20-26 °C, pH 5.5-6.5, EC 1.0-1.6 mS/cm.',
                 'temperature' => [20.0, 26.0],
                 'ph' => [5.5, 6.5],
+                'harvest_days' => 32,
             ],
             'tomate' => [
                 'label' => 'Tomate cherry',
                 'notes' => 'Necesita más nutrientes. Temperatura 18-26 °C, pH 5.5-6.5, EC 2.0-3.5 mS/cm.',
                 'temperature' => [18.0, 26.0],
                 'ph' => [5.5, 6.5],
+                'harvest_days' => 70,
             ],
         ];
     }
 
     /**
-     * @return list<array{id: string, label: string, notes: string, temperature: array{0: float, 1: float}, ph: array{0: float, 1: float}}>
+     * @return list<array{id: string, label: string, notes: string, temperature: array{0: float, 1: float}, ph: array{0: float, 1: float}, harvest_days: int}>
      */
     public static function cropOptions(): array
     {
@@ -58,6 +63,7 @@ class HydroponicAdvisorService
             'notes' => $crop['notes'],
             'temperature' => $crop['temperature'],
             'ph' => $crop['ph'],
+            'harvest_days' => $crop['harvest_days'],
         ])->values()->all();
     }
 

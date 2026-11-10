@@ -10,6 +10,8 @@ export function useLiveSnapshot(props, options = {}) {
     const device = ref(props.device);
     const sensors = ref(props.sensors ?? []);
     const chart = ref(props.chart ?? { labels: [], series: [], fallback: false });
+    const harvest = ref(props.harvest ?? null);
+    const dailyAdvice = ref(props.dailyAdvice ?? null);
     const lastUpdatedAt = ref(null);
     const liveError = ref(null);
     const fetching = ref(false);
@@ -47,6 +49,14 @@ export function useLiveSnapshot(props, options = {}) {
 
         if (includeChart && payload.chart) {
             chart.value = payload.chart;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(payload, 'harvest')) {
+            harvest.value = payload.harvest;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(payload, 'dailyAdvice')) {
+            dailyAdvice.value = payload.dailyAdvice;
         }
 
         lastUpdatedAt.value = new Date();
@@ -93,10 +103,12 @@ export function useLiveSnapshot(props, options = {}) {
     };
 
     watch(
-        () => [props.device, props.sensors, props.chart],
+        () => [props.device, props.sensors, props.chart, props.harvest, props.dailyAdvice],
         () => {
             device.value = props.device;
             sensors.value = props.sensors ?? [];
+            harvest.value = props.harvest ?? null;
+            dailyAdvice.value = props.dailyAdvice ?? null;
             if (includeChart) {
                 chart.value = props.chart ?? { labels: [], series: [], fallback: false };
             }
@@ -122,6 +134,8 @@ export function useLiveSnapshot(props, options = {}) {
         device,
         sensors,
         chart,
+        harvest,
+        dailyAdvice,
         lastUpdatedAt,
         liveError,
         fetching,

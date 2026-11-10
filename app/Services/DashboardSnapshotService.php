@@ -9,7 +9,7 @@ use App\Models\Sensor;
 class DashboardSnapshotService
 {
     /**
-     * @return array{device: ?array, sensors: array, hours: int, chart: array}
+     * @return array{device: ?array, sensors: array, hours: int, chart: array, harvest: ?array, dailyAdvice: ?array}
      */
     public function forDevice(?Device $device, int $hours, bool $includeChart = true): array
     {
@@ -53,6 +53,14 @@ class DashboardSnapshotService
             'chart' => $includeChart && $device
                 ? $this->chartData($device, $hours)
                 : ['labels' => [], 'series' => [], 'fallback' => false],
+            'harvest' => $device ? app(HarvestProjectionService::class)->forDevice($device) : null,
+            'dailyAdvice' => $device && $device->daily_advice ? [
+                'text' => $device->daily_advice,
+                'source' => $device->daily_advice_source,
+                'date' => $device->daily_advice_date?->toDateString(),
+                'generated_at' => $device->daily_advice_at?->toIso8601String(),
+                'is_today' => $device->daily_advice_date?->toDateString() === now()->toDateString(),
+            ] : null,
             'server_time' => now()->toIso8601String(),
         ];
     }
@@ -79,6 +87,8 @@ class DashboardSnapshotService
             'active_crop' => $cropId,
             'active_crop_label' => $crop['label'],
             'active_crop_notes' => $crop['notes'],
+            'planted_at' => $device->planted_at?->toDateString(),
+            'harvest_days' => $device->harvest_days ?: ($crop['harvest_days'] ?? 40),
             'last_ai_advice' => $device->last_ai_advice,
             'last_ai_source' => $device->last_ai_source,
             'last_ai_alert_at' => $device->last_ai_alert_at?->toIso8601String(),

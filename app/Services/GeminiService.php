@@ -9,6 +9,31 @@ class GeminiService
 {
     public function analyzeHydroponicSystem(array $payload): string
     {
+        return $this->generate($this->buildPrompt($payload), 1024);
+    }
+
+    public function dailyTip(array $payload): string
+    {
+        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+        $prompt = <<<PROMPT
+Eres un asesor de hidroponía escolar (Hydrolab). Escribe UN solo consejo práctico para HOY, en español, máximo 2 frases cortas.
+
+Datos del sistema:
+{$json}
+
+Reglas:
+- Usa solo los datos dados. No inventes lecturas.
+- Prioriza temperatura del agua, pH, bomba y proyección de cosecha si existen.
+- Termina con una acción concreta que un estudiante pueda hacer hoy.
+- Sin listas ni títulos; solo el consejo.
+PROMPT;
+
+        return $this->generate($prompt, 220);
+    }
+
+    private function generate(string $prompt, int $maxOutputTokens): string
+    {
         $apiKey = config('services.gemini.key');
 
         if (! $apiKey) {
@@ -16,8 +41,6 @@ class GeminiService
         }
 
         $model = config('services.gemini.model', 'gemini-2.0-flash');
-
-        $prompt = $this->buildPrompt($payload);
 
         $response = Http::timeout(45)
             ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}", [
@@ -30,7 +53,7 @@ class GeminiService
                 ],
                 'generationConfig' => [
                     'temperature' => 0.4,
-                    'maxOutputTokens' => 1024,
+                    'maxOutputTokens' => $maxOutputTokens,
                 ],
             ]);
 

@@ -15,10 +15,16 @@ class Device extends Model
         'last_seen_at',
         'pump_on',
         'active_crop',
+        'planted_at',
+        'harvest_days',
         'last_ai_advice',
         'last_ai_source',
         'last_ai_alert_at',
         'last_ai_alert_types',
+        'daily_advice',
+        'daily_advice_source',
+        'daily_advice_date',
+        'daily_advice_at',
     ];
 
     protected function casts(): array
@@ -27,8 +33,12 @@ class Device extends Model
             'is_active' => 'boolean',
             'pump_on' => 'boolean',
             'last_seen_at' => 'datetime',
+            'planted_at' => 'date',
+            'harvest_days' => 'integer',
             'last_ai_alert_at' => 'datetime',
             'last_ai_alert_types' => 'array',
+            'daily_advice_date' => 'date',
+            'daily_advice_at' => 'datetime',
         ];
     }
 

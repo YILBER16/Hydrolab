@@ -4,7 +4,7 @@ import MetricIcon from '@/Components/MetricIcon.vue';
 import Sparkline from '@/Components/Sparkline.vue';
 import StatusGauge from '@/Components/StatusGauge.vue';
 import TipPlants from '@/Components/TipPlants.vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { Line } from 'vue-chartjs';
 import {
     Chart as ChartJS,
@@ -45,6 +45,14 @@ const props = defineProps({
         type: Object,
         default: () => ({ labels: [], series: [] }),
     },
+    harvest: {
+        type: Object,
+        default: null,
+    },
+    dailyAdvice: {
+        type: Object,
+        default: null,
+    },
 });
 
 const page = usePage();
@@ -52,12 +60,16 @@ const {
     device,
     sensors,
     chart,
+    harvest,
+    dailyAdvice,
     lastUpdatedAt,
     liveError,
     fetching,
     autoRefresh,
     refresh,
 } = useLiveSnapshot(props, { intervalMs: 4000, includeChart: true });
+
+const adviceForm = useForm({});
 
 const ranges = [
     { label: '1H', hours: 1 },
@@ -214,38 +226,38 @@ const overall = computed(() => {
 });
 
 const tip = computed(() => {
-    const ph = sensors.value.find((sensor) => sensor.type === 'ph');
-    const water = sensors.value.find((sensor) => sensor.type === 'water_level');
-    const ec = sensors.value.find((sensor) => sensor.type === 'ec');
-    const temperature = sensors.value.find((sensor) => sensor.type === 'temperature');
+    if (dailyAdvice.value?.text) {
+        return dailyAdvice.value.text;
+    }
 
-    if (ph?.status === 'high') {
-        return 'El pH está alto. Revisa la solución nutritiva y baja el pH de forma gradual.';
-    }
-    if (ph?.status === 'low') {
-        return 'El pH está bajo. Ajusta la solución para acercarlo al rango de 5.5 a 6.5.';
-    }
-    if (water?.status === 'low') {
-        return 'El nivel de agua está bajo. Revisa el tanque para evitar que las raíces queden expuestas.';
-    }
+    const temperature = sensors.value.find((sensor) => sensor.type === 'temperature');
     if (temperature?.status === 'high') {
-        return `La temperatura del agua está alta (${formatValue(temperature.value)} °C). Evita que suba de 28 °C.`;
-    }
-    if (temperature?.status === 'low') {
-        return `La temperatura del agua está baja (${formatValue(temperature.value)} °C). El rango ideal es 18 a 28 °C.`;
+        return `La temperatura del agua está alta (${formatValue(temperature.value)} °C). Evita que suba del máximo del cultivo.`;
     }
     if (temperature?.status === 'ok') {
         return `La temperatura del agua está en ${formatValue(temperature.value)} °C, dentro del rango ideal.`;
     }
-    if (ec?.status === 'unknown') {
-        return 'Aún no hay datos de conductividad. Conecta el sensor EC para vigilar los nutrientes.';
+
+    return 'El consejo del día se genera al abrir el Dashboard (1 vez al día). También puedes pedirlo manualmente.';
+});
+
+const tipSourceLabel = computed(() => {
+    if (dailyAdvice.value?.source === 'gemini') {
+        return 'Gemini · consejo del día';
     }
-    if (ph?.status === 'ok') {
-        return 'Mantén el pH entre 5.5 y 6.5 para una óptima absorción de nutrientes.';
+    if (dailyAdvice.value?.source === 'local') {
+        return 'Hydrolab · consejo del día';
     }
 
-    return 'Mantén el pH entre 5.5 y 6.5 para una óptima absorción de nutrientes.';
+    return 'Consejo rápido';
 });
+
+const requestDailyAdvice = () => {
+    adviceForm.post(route('dashboard.daily-advice'), {
+        preserveScroll: true,
+        onSuccess: () => refresh(),
+    });
+};
 
 const chartData = computed(() => ({
     labels: chart.value.labels,
@@ -562,6 +574,50 @@ const setHours = (hours) => {
                         </div>
                     </section>
 
+                    <section class="rounded-[20px] bg-white p-5 shadow-card">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <h3 class="text-sm font-bold text-[#1A2B56]">Proyección de cosecha</h3>
+                                <p v-if="harvest" class="mt-1 text-sm font-semibold text-[#1A2B56]">
+                                    {{ harvest.crop_label }} · {{ harvest.status_label }}
+                                </p>
+                                <p v-else class="mt-1 text-sm text-slate-500">
+                                    Define la fecha de siembra en Dispositivo.
+                                </p>
+                            </div>
+                            <span
+                                v-if="harvest"
+                                class="rounded-full px-2.5 py-1 text-[11px] font-bold"
+                                :class="{
+                                    'bg-emerald-50 text-emerald-600': harvest.status === 'ready' || harvest.status === 'ahead' || harvest.status === 'on_track',
+                                    'bg-amber-50 text-amber-700': harvest.status === 'delayed',
+                                }"
+                            >
+                                {{ harvest.progress_percent }}%
+                            </span>
+                        </div>
+
+                        <template v-if="harvest">
+                            <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                                <div
+                                    class="h-full rounded-full bg-[#3CB54A]"
+                                    :style="{ width: `${harvest.progress_percent}%` }"
+                                />
+                            </div>
+                            <p class="mt-3 text-sm leading-6 text-[#1A2B56]">{{ harvest.summary }}</p>
+                            <p class="mt-1 text-xs font-semibold text-slate-500">
+                                Estimada: {{ harvest.harvest_date_label }} · {{ harvest.remaining_days }} día(s) restantes
+                            </p>
+                        </template>
+                        <Link
+                            v-else
+                            :href="route('device')"
+                            class="mt-3 inline-flex text-sm font-bold text-[#2F80ED] hover:underline"
+                        >
+                            Configurar siembra →
+                        </Link>
+                    </section>
+
                     <section class="relative overflow-hidden rounded-[20px] p-5 shadow-card" style="background: #FFFCFA;">
                         <div class="relative z-10 flex items-start gap-4 pr-[4.5rem]">
                             <span class="relative mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center">
@@ -573,14 +629,24 @@ const setHours = (hours) => {
                                 </span>
                             </span>
                             <div>
-                                <h3 class="text-sm font-bold text-[#1A2B56]">Consejo rápido</h3>
+                                <h3 class="text-sm font-bold text-[#1A2B56]">{{ tipSourceLabel }}</h3>
                                 <p class="mt-1.5 text-sm leading-6 text-[#1A2B56]">{{ tip }}</p>
-                                <Link
-                                    :href="route('analysis')"
-                                    class="mt-3 inline-flex text-sm font-bold text-[#E88922] hover:underline"
-                                >
-                                    Pedir recomendación IA →
-                                </Link>
+                                <div class="mt-3 flex flex-wrap gap-3">
+                                    <button
+                                        type="button"
+                                        class="text-sm font-bold text-[#E88922] hover:underline disabled:opacity-60"
+                                        :disabled="adviceForm.processing"
+                                        @click="requestDailyAdvice"
+                                    >
+                                        {{ adviceForm.processing ? 'Generando…' : 'Pedir consejo IA ahora' }}
+                                    </button>
+                                    <Link
+                                        :href="route('analysis')"
+                                        class="text-sm font-bold text-[#2F80ED] hover:underline"
+                                    >
+                                        Análisis completo →
+                                    </Link>
+                                </div>
                             </div>
                         </div>
 

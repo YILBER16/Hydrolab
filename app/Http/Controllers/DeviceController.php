@@ -27,6 +27,7 @@ class DeviceController extends Controller
             ] : null,
             'sensors' => $payload['sensors'],
             'crops' => HydroponicAdvisorService::cropOptions(),
+            'harvest' => $payload['harvest'],
         ]);
     }
 
@@ -44,6 +45,8 @@ class DeviceController extends Controller
             'temperature_max' => ['required', 'numeric', 'gte:temperature_min'],
             'ph_min' => ['required', 'numeric'],
             'ph_max' => ['required', 'numeric', 'gte:ph_min'],
+            'planted_at' => ['nullable', 'date', 'before_or_equal:today'],
+            'harvest_days' => ['nullable', 'integer', 'min:7', 'max:180'],
         ]);
 
         $alerts->applyCropToDevice($device, $validated['crop'], [
@@ -51,6 +54,15 @@ class DeviceController extends Controller
             'ph' => [$validated['ph_min'], $validated['ph_max']],
         ]);
 
-        return back()->with('success', 'Cultivo y rangos guardados. Hydrolab comparará automáticamente las lecturas del ESP32.');
+        $cropDefaults = HydroponicAdvisorService::crops()[$validated['crop']];
+
+        $device->forceFill([
+            'planted_at' => $validated['planted_at'] ?? null,
+            'harvest_days' => $validated['harvest_days']
+                ?? $device->harvest_days
+                ?? $cropDefaults['harvest_days'],
+        ])->save();
+
+        return back()->with('success', 'Cultivo, rangos y proyección de cosecha guardados.');
     }
 }

@@ -16,6 +16,7 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/live', [DashboardController::class, 'live'])->name('dashboard.live');
+    Route::post('/dashboard/consejo-diario', [DashboardController::class, 'refreshDailyAdvice'])->name('dashboard.daily-advice');
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
     Route::get('/history/live', [HistoryController::class, 'live'])->name('history.live');
     Route::get('/analysis', [AnalysisController::class, 'index'])->name('analysis');
