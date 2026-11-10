@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Device;
 use App\Services\DailyAdviceService;
 use App\Services\DashboardSnapshotService;
+use App\Services\HydroponicAdvisorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,7 +30,10 @@ class DashboardController extends Controller
             $device->refresh();
         }
 
-        return Inertia::render('Dashboard', $this->snapshot->forDevice($device, $hours));
+        return Inertia::render('Dashboard', [
+            ...$this->snapshot->forDevice($device, $hours),
+            'crops' => HydroponicAdvisorService::cropOptions(),
+        ]);
     }
 
     public function live(Request $request): JsonResponse

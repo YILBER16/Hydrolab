@@ -17,7 +17,7 @@ import {
     Legend,
     Filler,
 } from 'chart.js';
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { useLiveSnapshot } from '@/composables/useLiveSnapshot';
 
 ChartJS.register(
@@ -53,6 +53,10 @@ const props = defineProps({
         type: Object,
         default: null,
     },
+    crops: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const page = usePage();
@@ -70,6 +74,123 @@ const {
 } = useLiveSnapshot(props, { intervalMs: 4000, includeChart: true });
 
 const adviceForm = useForm({});
+const flashSuccess = computed(() => page.props.flash?.success ?? null);
+
+const sensorRange = (type, fallback) => {
+    const sensor = (props.sensors ?? []).find((item) => item.type === type);
+    if (sensor?.min_threshold != null && sensor?.max_threshold != null) {
+        return [Number(sensor.min_threshold), Number(sensor.max_threshold)];
+    }
+
+    return fallback;
+};
+
+const initialCrop = props.device?.active_crop ?? 'general';
+const initialProfile = props.crops.find((crop) => crop.id === initialCrop) ?? props.crops[0];
+const [initialTempMin, initialTempMax] = sensorRange('temperature', initialProfile?.temperature ?? [18, 28]);
+const [initialPhMin, initialPhMax] = sensorRange('ph', initialProfile?.ph ?? [5.5, 6.5]);
+
+const cropForm = useForm({
+    crop: initialCrop,
+    temperature_min: initialTempMin,
+    temperature_max: initialTempMax,
+    ph_min: initialPhMin,
+    ph_max: initialPhMax,
+    planted_at: props.device?.planted_at ?? '',
+    harvest_days: props.device?.harvest_days ?? initialProfile?.harvest_days ?? 40,
+});
+
+const selectedCrop = computed(
+    () => props.crops.find((crop) => crop.id === cropForm.crop) ?? props.crops[0],
+);
+
+const applyCropDefaults = (cropId) => {
+    const crop = props.crops.find((item) => item.id === cropId);
+    if (!crop) {
+        return;
+    }
+
+    cropForm.temperature_min = crop.temperature[0];
+    cropForm.temperature_max = crop.temperature[1];
+    cropForm.ph_min = crop.ph[0];
+    cropForm.ph_max = crop.ph[1];
+    cropForm.harvest_days = crop.harvest_days;
+};
+
+watch(
+    () => cropForm.crop,
+    (cropId, previous) => {
+        if (previous !== undefined && cropId !== previous) {
+            applyCropDefaults(cropId);
+        }
+    },
+);
+
+watch(
+    () => [
+        device.value?.active_crop,
+        device.value?.planted_at,
+        device.value?.harvest_days,
+        sensors.value?.find((s) => s.type === 'temperature')?.min_threshold,
+        sensors.value?.find((s) => s.type === 'temperature')?.max_threshold,
+        sensors.value?.find((s) => s.type === 'ph')?.min_threshold,
+        sensors.value?.find((s) => s.type === 'ph')?.max_threshold,
+    ],
+    () => {
+        if (cropForm.processing || cropForm.isDirty) {
+            return;
+        }
+
+        if (device.value?.active_crop) {
+            cropForm.crop = device.value.active_crop;
+        }
+        if (device.value?.planted_at !== undefined) {
+            cropForm.planted_at = device.value.planted_at ?? '';
+        }
+        if (device.value?.harvest_days) {
+            cropForm.harvest_days = device.value.harvest_days;
+        }
+
+        const liveSensors = sensors.value ?? props.sensors ?? [];
+        const tempSensor = liveSensors.find((item) => item.type === 'temperature');
+        const phSensor = liveSensors.find((item) => item.type === 'ph');
+        const tempFallback = selectedCrop.value?.temperature ?? [18, 28];
+        const phFallback = selectedCrop.value?.ph ?? [5.5, 6.5];
+
+        cropForm.temperature_min = tempSensor?.min_threshold != null ? Number(tempSensor.min_threshold) : tempFallback[0];
+        cropForm.temperature_max = tempSensor?.max_threshold != null ? Number(tempSensor.max_threshold) : tempFallback[1];
+        cropForm.ph_min = phSensor?.min_threshold != null ? Number(phSensor.min_threshold) : phFallback[0];
+        cropForm.ph_max = phSensor?.max_threshold != null ? Number(phSensor.max_threshold) : phFallback[1];
+
+        cropForm.defaults({
+            crop: cropForm.crop,
+            temperature_min: cropForm.temperature_min,
+            temperature_max: cropForm.temperature_max,
+            ph_min: cropForm.ph_min,
+            ph_max: cropForm.ph_max,
+            planted_at: cropForm.planted_at,
+            harvest_days: cropForm.harvest_days,
+        });
+    },
+);
+
+const saveCrop = () => {
+    cropForm.patch(route('device.crop'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            cropForm.defaults({
+                crop: cropForm.crop,
+                temperature_min: cropForm.temperature_min,
+                temperature_max: cropForm.temperature_max,
+                ph_min: cropForm.ph_min,
+                ph_max: cropForm.ph_max,
+                planted_at: cropForm.planted_at,
+                harvest_days: cropForm.harvest_days,
+            });
+            refresh();
+        },
+    });
+};
 
 const ranges = [
     { label: '1H', hours: 1 },
@@ -110,14 +231,6 @@ const themes = {
         solid: 'bg-[#14B8A6]',
         iconWrap: 'bg-gradient-to-br from-[#CCFBF1] to-[#14B8A6] text-white shadow-[0_8px_16px_rgba(20,184,166,0.4)]',
     },
-};
-
-const summaryName = {
-    temperature: 'Temperatura',
-    humidity: 'Humedad',
-    ph: 'pH',
-    ec: 'EC',
-    water_level: 'Nivel de agua',
 };
 
 const statusLabel = {
@@ -178,10 +291,6 @@ const lastReadingTime = computed(() => {
         hour12: true,
     }).format(lastReading.value);
 });
-
-const temperatureSensor = computed(() =>
-    sensors.value.find((sensor) => sensor.type === 'temperature') ?? null,
-);
 
 const overall = computed(() => {
     if (sensors.value.length === 0) {
@@ -392,18 +501,8 @@ const setHours = (hours) => {
                 </span>
             </div>
             <div
-                class="hl-glass inline-flex items-center gap-2 rounded-2xl border border-white/70 px-3 py-2.5 text-sm font-extrabold text-hl-navy shadow-card"
-            >
-                <span class="text-xs font-semibold text-slate-500">Temp.</span>
-                <template v-if="temperatureSensor?.value !== null && temperatureSensor?.value !== undefined">
-                    {{ formatValue(temperatureSensor.value) }}
-                    <span class="text-xs font-semibold text-slate-500">°C</span>
-                </template>
-                <template v-else>--</template>
-            </div>
-            <div
-                class="hl-glass inline-flex items-center gap-2 rounded-2xl border border-white/70 px-3 py-2.5 text-sm font-semibold shadow-card"
-                :class="device?.pump_on === true ? 'text-emerald-600' : device?.pump_on === false ? 'text-slate-500' : 'text-hl-navy'"
+                class="hl-glass hidden items-center gap-2 rounded-2xl border border-white/70 px-3 py-2.5 text-sm font-semibold shadow-card lg:inline-flex"
+                :class="device?.pump_on === true ? 'text-emerald-600' : 'text-hl-navy'"
             >
                 <span
                     class="h-2.5 w-2.5 rounded-full"
@@ -413,31 +512,18 @@ const setHours = (hours) => {
             </div>
             <button
                 type="button"
-                class="hl-glass inline-flex items-center gap-2 rounded-2xl border border-white/70 px-3 py-2.5 text-sm font-semibold text-hl-navy shadow-card"
-                @click="autoRefresh = !autoRefresh"
-            >
-                <span
-                    class="h-2 w-2 rounded-full"
-                    :class="autoRefresh ? 'bg-hl-green' : 'bg-slate-300'"
-                />
-                Auto-actualización
-                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">4s</span>
-            </button>
-            <button
-                type="button"
                 class="inline-flex items-center gap-2 rounded-2xl bg-hl-blue px-4 py-2.5 text-sm font-semibold text-white shadow-card hover:bg-blue-600 disabled:opacity-70"
                 :disabled="fetching"
                 @click="refresh"
             >
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v6h6M20 20v-6h-6M5 19A8 8 0 0 0 19 8M19 5A8 8 0 0 0 5 16" />
-                </svg>
-                Actualizar ahora
+                Actualizar
             </button>
         </template>
 
         <div class="space-y-5">
             <p v-if="liveError" class="text-sm font-semibold text-amber-600">{{ liveError }}</p>
+            <p v-if="flashSuccess" class="text-sm font-semibold text-emerald-600">{{ flashSuccess }}</p>
+
             <div
                 v-if="sensors.length === 0"
                 class="hl-card px-6 py-12 text-center text-slate-500"
@@ -498,80 +584,146 @@ const setHours = (hours) => {
                 </article>
             </div>
 
-            <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-                <section class="hl-card p-5">
-                    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                            <h2 class="text-lg font-bold text-hl-navy">Historial de lecturas</h2>
-                            <p class="text-sm text-slate-400">Evolución de los sensores en el periodo seleccionado</p>
+            <div class="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
+                <div class="space-y-4">
+                    <section class="hl-card p-5">
+                        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h2 class="text-lg font-bold text-hl-navy">Historial de lecturas</h2>
+                                <p class="text-sm text-slate-400">
+                                    Última lectura:
+                                    <span class="font-semibold text-hl-navy">{{ lastReadingDate }} {{ lastReadingTime }}</span>
+                                </p>
+                            </div>
+                            <div class="flex rounded-full bg-slate-100 p-1">
+                                <button
+                                    v-for="range in ranges"
+                                    :key="range.hours"
+                                    type="button"
+                                    class="rounded-full px-3 py-1.5 text-xs font-bold transition"
+                                    :class="hours === range.hours ? 'bg-white text-hl-blue shadow-sm' : 'text-slate-500 hover:text-hl-navy'"
+                                    @click="setHours(range.hours)"
+                                >
+                                    {{ range.label }}
+                                </button>
+                            </div>
                         </div>
-                        <div class="flex rounded-full bg-slate-100 p-1">
-                            <button
-                                v-for="range in ranges"
-                                :key="range.hours"
-                                type="button"
-                                class="rounded-full px-3 py-1.5 text-xs font-bold transition"
-                                :class="hours === range.hours ? 'bg-white text-hl-blue shadow-sm' : 'text-slate-500 hover:text-hl-navy'"
-                                @click="setHours(range.hours)"
-                            >
-                                {{ range.label }}
-                            </button>
+                        <div v-if="!chart.labels?.length" class="flex h-72 items-center justify-center text-sm text-slate-400">
+                            Esperando lecturas del ESP32. Cuando envíe temperatura, aparecerá aquí.
                         </div>
-                    </div>
-                    <div v-if="!chart.labels?.length" class="flex h-72 items-center justify-center text-sm text-slate-400">
-                        Esperando lecturas del ESP32. Cuando envíe temperatura, aparecerá aquí.
-                    </div>
-                    <div v-else class="h-72">
-                        <p v-if="chart.fallback" class="mb-3 text-xs font-medium text-amber-600">
-                            No hay lecturas en este periodo. Mostrando las últimas temperaturas guardadas.
-                        </p>
-                        <Line :key="`${hours}-${chart.labels?.length}-${lastReadingTime}`" :data="chartData" :options="chartOptions" />
-                    </div>
-                </section>
-
-                <div class="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-                    <section
-                        class="rounded-[20px] border border-white/80 p-5 text-center shadow-card"
-                        style="background: linear-gradient(180deg, #FFFCFA 0%, #FBF4EC 100%);"
-                    >
-                        <h3 class="text-left text-sm font-bold text-[#1A2B56]">Estado general</h3>
-                        <div class="mt-3 flex justify-center">
-                            <StatusGauge :percent="overall.percent" :tone="overall.tone" />
+                        <div v-else class="h-72">
+                            <p v-if="chart.fallback" class="mb-3 text-xs font-medium text-amber-600">
+                                No hay lecturas en este periodo. Mostrando las últimas temperaturas guardadas.
+                            </p>
+                            <Line :key="`${hours}-${chart.labels?.length}-${lastReadingTime}`" :data="chartData" :options="chartOptions" />
                         </div>
-                        <p
-                            class="mt-3 text-xl font-extrabold"
-                            :class="{
-                                'text-[#22C55E]': overall.tone === 'ok',
-                                'text-hl-orange': overall.tone === 'warn',
-                                'text-rose-500': overall.tone === 'bad',
-                                'text-slate-400': overall.tone === 'unknown',
-                            }"
-                        >
-                            {{ overall.label }}
-                        </p>
-                        <p class="mt-1 text-sm font-medium leading-5 text-[#1A2B56]">
-                            {{ overall.detail }}
-                        </p>
                     </section>
 
-                    <section class="rounded-[20px] bg-white p-5 shadow-card">
-                        <div class="flex items-center gap-4">
-                            <span class="relative flex h-12 w-12 shrink-0 items-center justify-center">
-                                <span class="absolute inset-[-6px] rounded-full bg-[#8EC5FF] opacity-35 blur-md" />
-                                <span class="relative flex h-12 w-12 items-center justify-center rounded-full bg-[#E7F2FF] text-[#2F80ED]">
+                    <section class="relative overflow-hidden rounded-[24px] p-5 shadow-card" style="background: #FFFCFA;">
+                        <div class="relative z-10 flex items-start gap-4 pr-16">
+                            <span class="relative mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center">
+                                <span class="absolute inset-[-7px] rounded-full bg-[#FFB067] opacity-45 blur-[10px]" />
+                                <span class="relative flex h-12 w-12 items-center justify-center rounded-full bg-[#FFE8D2] text-[#E88922]">
                                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                        <rect x="4" y="5" width="16" height="15" rx="2.2" />
-                                        <path stroke-linecap="round" d="M8 3.5v3M16 3.5v3M4 10h16" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 13v4M10 15h4" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 18h6m-5 3h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1.1 1.4 1.1 2.2h5c0-.8.5-1.7 1.1-2.2A6 6 0 0 0 12 3Z" />
                                     </svg>
                                 </span>
                             </span>
-                            <div class="min-w-0">
-                                <h3 class="text-sm font-bold text-[#1A2B56]">Última lectura</h3>
-                                <p class="mt-1 text-sm font-semibold capitalize text-[#3CB54A]">{{ lastReadingDate }}</p>
-                                <p class="text-sm font-semibold text-[#3CB54A]">{{ lastReadingTime }}</p>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <h3 class="text-sm font-bold text-[#1A2B56]">{{ tipSourceLabel }}</h3>
+                                    <div class="flex justify-center">
+                                        <StatusGauge :percent="overall.percent" :tone="overall.tone" :size="72" />
+                                    </div>
+                                </div>
+                                <p class="mt-1 text-xs font-semibold text-slate-500">{{ overall.label }} · {{ overall.detail }}</p>
+                                <p class="mt-2 text-sm leading-6 text-[#1A2B56]">{{ tip }}</p>
+                                <div class="mt-3 flex flex-wrap gap-3">
+                                    <button
+                                        type="button"
+                                        class="text-sm font-bold text-[#E88922] hover:underline disabled:opacity-60"
+                                        :disabled="adviceForm.processing"
+                                        @click="requestDailyAdvice"
+                                    >
+                                        {{ adviceForm.processing ? 'Generando…' : 'Pedir consejo IA ahora' }}
+                                    </button>
+                                    <Link
+                                        :href="route('analysis')"
+                                        class="text-sm font-bold text-[#2F80ED] hover:underline"
+                                    >
+                                        Análisis completo →
+                                    </Link>
+                                </div>
                             </div>
                         </div>
+                        <TipPlants />
+                    </section>
+                </div>
+
+                <aside class="space-y-4">
+                    <section class="hl-card p-5">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <h2 class="text-lg font-bold text-hl-navy">Cultivo activo</h2>
+                                <p class="mt-1 text-sm text-slate-400">Selecciona y edita rangos sin salir del Dashboard.</p>
+                            </div>
+                            <span class="rounded-full bg-hl-blue/10 px-2.5 py-1 text-[11px] font-bold text-hl-blue">
+                                {{ device?.active_crop_label || 'Sin cultivo' }}
+                            </span>
+                        </div>
+
+                        <label class="mt-4 block text-xs font-medium text-slate-500">
+                            Tipo de cultivo
+                            <select
+                                v-model="cropForm.crop"
+                                class="mt-1 w-full rounded-xl border-slate-200 text-sm font-semibold text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                            >
+                                <option v-for="crop in crops" :key="crop.id" :value="crop.id">
+                                    {{ crop.label }}
+                                </option>
+                            </select>
+                        </label>
+                        <p v-if="selectedCrop" class="mt-2 text-xs text-slate-500">{{ selectedCrop.notes }}</p>
+
+                        <div class="mt-4 grid grid-cols-2 gap-3">
+                            <label class="text-xs font-medium text-slate-500">
+                                Temp mín
+                                <input v-model.number="cropForm.temperature_min" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                            </label>
+                            <label class="text-xs font-medium text-slate-500">
+                                Temp máx
+                                <input v-model.number="cropForm.temperature_max" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                            </label>
+                            <label class="text-xs font-medium text-slate-500">
+                                pH mín
+                                <input v-model.number="cropForm.ph_min" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                            </label>
+                            <label class="text-xs font-medium text-slate-500">
+                                pH máx
+                                <input v-model.number="cropForm.ph_max" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                            </label>
+                            <label class="text-xs font-medium text-slate-500">
+                                Siembra
+                                <input v-model="cropForm.planted_at" type="date" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                            </label>
+                            <label class="text-xs font-medium text-slate-500">
+                                Días cosecha
+                                <input v-model.number="cropForm.harvest_days" type="number" min="7" max="180" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                            </label>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-hl-blue px-4 py-2.5 text-sm font-semibold text-white shadow-card hover:bg-blue-600 disabled:opacity-70"
+                            :disabled="cropForm.processing || !device"
+                            @click="saveCrop"
+                        >
+                            {{ cropForm.processing ? 'Guardando…' : 'Guardar cultivo y rangos' }}
+                        </button>
+                        <p class="mt-2 text-center text-[11px] text-slate-400">
+                            Para crear nuevos tipos de cultivo ve a
+                            <Link :href="route('device')" class="font-semibold text-hl-blue hover:underline">Dispositivo</Link>.
+                        </p>
                     </section>
 
                     <section class="rounded-[20px] bg-white p-5 shadow-card">
@@ -582,7 +734,7 @@ const setHours = (hours) => {
                                     {{ harvest.crop_label }} · {{ harvest.status_label }}
                                 </p>
                                 <p v-else class="mt-1 text-sm text-slate-500">
-                                    Define la fecha de siembra en Dispositivo.
+                                    Indica la fecha de siembra arriba y guarda.
                                 </p>
                             </div>
                             <span
@@ -606,98 +758,12 @@ const setHours = (hours) => {
                             </div>
                             <p class="mt-3 text-sm leading-6 text-[#1A2B56]">{{ harvest.summary }}</p>
                             <p class="mt-1 text-xs font-semibold text-slate-500">
-                                Estimada: {{ harvest.harvest_date_label }} · {{ harvest.remaining_days }} día(s) restantes
+                                Estimada: {{ harvest.harvest_date_label }} · {{ harvest.remaining_days }} día(s)
                             </p>
                         </template>
-                        <Link
-                            v-else
-                            :href="route('device')"
-                            class="mt-3 inline-flex text-sm font-bold text-[#2F80ED] hover:underline"
-                        >
-                            Configurar siembra →
-                        </Link>
                     </section>
-
-                    <section class="relative overflow-hidden rounded-[20px] p-5 shadow-card" style="background: #FFFCFA;">
-                        <div class="relative z-10 flex items-start gap-4 pr-[4.5rem]">
-                            <span class="relative mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center">
-                                <span class="absolute inset-[-7px] rounded-full bg-[#FFB067] opacity-45 blur-[10px]" />
-                                <span class="relative flex h-12 w-12 items-center justify-center rounded-full bg-[#FFE8D2] text-[#E88922]">
-                                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 18h6m-5 3h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1.1 1.4 1.1 2.2h5c0-.8.5-1.7 1.1-2.2A6 6 0 0 0 12 3Z" />
-                                    </svg>
-                                </span>
-                            </span>
-                            <div>
-                                <h3 class="text-sm font-bold text-[#1A2B56]">{{ tipSourceLabel }}</h3>
-                                <p class="mt-1.5 text-sm leading-6 text-[#1A2B56]">{{ tip }}</p>
-                                <div class="mt-3 flex flex-wrap gap-3">
-                                    <button
-                                        type="button"
-                                        class="text-sm font-bold text-[#E88922] hover:underline disabled:opacity-60"
-                                        :disabled="adviceForm.processing"
-                                        @click="requestDailyAdvice"
-                                    >
-                                        {{ adviceForm.processing ? 'Generando…' : 'Pedir consejo IA ahora' }}
-                                    </button>
-                                    <Link
-                                        :href="route('analysis')"
-                                        class="text-sm font-bold text-[#2F80ED] hover:underline"
-                                    >
-                                        Análisis completo →
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-
-                        <TipPlants />
-                    </section>
-                </div>
+                </aside>
             </div>
-
-            <section
-                v-if="sensors.length"
-                class="rounded-[24px] px-5 py-5 shadow-card sm:px-7"
-                style="background: #FFF9F0;"
-            >
-                <h3 class="text-base font-extrabold text-[#1A2B56]">Resumen de parámetros</h3>
-                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
-                    <div
-                        v-for="(sensor, index) in sensors"
-                        :key="`summary-${sensor.id}`"
-                        class="flex items-center gap-3 py-3 lg:px-4"
-                        :class="index === 0 ? 'lg:pl-0' : 'lg:border-l lg:border-slate-200/80'"
-                    >
-                        <span
-                            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white shadow-[0_6px_14px_rgba(26,43,72,0.16)]"
-                            :class="themeFor(sensor.type).solid"
-                        >
-                            <MetricIcon :type="sensor.type" />
-                        </span>
-                        <div class="min-w-0">
-                            <p class="truncate text-xs font-medium text-[#1A2B56]">
-                                {{ summaryName[sensor.type] ?? sensor.name }}
-                            </p>
-                            <p class="mt-0.5 text-[15px] font-extrabold leading-5 text-[#1A2B56]">
-                                <template v-if="sensor.value !== null">
-                                    {{ formatValue(sensor.value) }} {{ sensor.unit }}
-                                </template>
-                                <template v-else>Sin datos</template>
-                            </p>
-                            <p
-                                class="mt-0.5 text-sm font-semibold"
-                                :class="{
-                                    'text-[#22C55E]': sensor.status === 'ok',
-                                    'text-amber-500': sensor.status === 'low' || sensor.status === 'high',
-                                    'text-[#1A2B56]': sensor.status === 'unknown',
-                                }"
-                            >
-                                {{ sensor.status === 'unknown' ? '--' : statusLabel[sensor.status] }}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </div>
     </AuthenticatedLayout>
 </template>

@@ -8,6 +8,10 @@ const props = defineProps({
         type: String,
         default: 'ok',
     },
+    size: {
+        type: Number,
+        default: 138,
+    },
 });
 
 const uid = `st${Math.random().toString(36).slice(2, 9)}`;
@@ -18,18 +22,25 @@ const ring = {
     bad: 'conic-gradient(from -30deg, #FDA4AF 0%, #F43F5E 50%, #E11D48 80%, #FDA4AF 100%)',
     unknown: 'conic-gradient(from -30deg, #E2E8F0 0%, #94A3B8 50%, #CBD5E1 100%)',
 };
+
+const iconSize = Math.round(props.size * 0.42);
+const inset = Math.max(6, Math.round(props.size * 0.072));
 </script>
 
 <template>
-    <div class="relative h-[138px] w-[138px]">
+    <div class="relative" :style="{ width: `${size}px`, height: `${size}px` }">
         <div
             class="absolute inset-0 rounded-full"
             :style="{ background: ring[props.tone] ?? ring.ok }"
         />
-        <div class="absolute inset-[10px] rounded-full bg-[#FFFCFA]" />
+        <div
+            class="absolute rounded-full bg-[#FFFCFA]"
+            :style="{ inset: `${inset}px` }"
+        />
 
         <svg
-            class="absolute inset-0 m-auto h-[58px] w-[58px]"
+            class="absolute inset-0 m-auto"
+            :style="{ width: `${iconSize}px`, height: `${iconSize}px` }"
             viewBox="0 0 64 64"
             fill="none"
             aria-hidden="true"
