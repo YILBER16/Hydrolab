@@ -479,24 +479,24 @@ const setHours = (hours) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <h1 class="text-2xl font-extrabold tracking-tight text-hl-navy sm:text-3xl">
+            <h1 class="text-xl font-extrabold tracking-tight text-hl-navy sm:text-2xl lg:text-3xl">
                 ¡Hola, {{ firstName }}! 👋
             </h1>
             <p class="mt-1 text-sm text-hl-muted">
-                Aquí tienes el estado actual de tu cultivo hidropónico.
+                Estado actual de tu cultivo hidropónico.
             </p>
         </template>
 
         <template #actions>
             <div
-                class="hl-glass inline-flex items-center gap-2 rounded-2xl border border-white/70 px-3 py-2.5 text-sm font-semibold text-hl-navy shadow-card"
+                class="hl-glass inline-flex max-w-full items-center gap-2 rounded-2xl border border-white/70 px-2.5 py-2 text-xs font-semibold text-hl-navy shadow-card sm:px-3 sm:py-2.5 sm:text-sm"
             >
                 <span
-                    class="h-2.5 w-2.5 rounded-full"
+                    class="h-2.5 w-2.5 shrink-0 rounded-full"
                     :class="autoRefresh && device?.is_online ? 'bg-hl-green hl-live-dot' : device?.is_online ? 'bg-hl-green' : 'bg-slate-300'"
                 />
-                {{ autoRefresh ? 'En vivo' : 'Pausado' }}
-                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                <span>{{ autoRefresh ? 'En vivo' : 'Pausado' }}</span>
+                <span class="hidden rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 sm:inline">
                     {{ lastUpdatedLabel }}
                 </span>
             </div>
@@ -512,7 +512,7 @@ const setHours = (hours) => {
             </div>
             <button
                 type="button"
-                class="inline-flex items-center gap-2 rounded-2xl bg-hl-blue px-4 py-2.5 text-sm font-semibold text-white shadow-card hover:bg-blue-600 disabled:opacity-70"
+                class="inline-flex items-center gap-2 rounded-2xl bg-hl-blue px-3 py-2 text-xs font-semibold text-white shadow-card hover:bg-blue-600 disabled:opacity-70 sm:px-4 sm:py-2.5 sm:text-sm"
                 :disabled="fetching"
                 @click="refresh"
             >
@@ -520,7 +520,7 @@ const setHours = (hours) => {
             </button>
         </template>
 
-        <div class="space-y-5">
+        <div class="space-y-4 sm:space-y-5">
             <p v-if="liveError" class="text-sm font-semibold text-amber-600">{{ liveError }}</p>
             <p v-if="flashSuccess" class="text-sm font-semibold text-emerald-600">{{ flashSuccess }}</p>
 
@@ -533,34 +533,34 @@ const setHours = (hours) => {
 
             <div
                 v-else
-                class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"
+                class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-5"
             >
                 <article
                     v-for="sensor in sensors"
                     :key="sensor.id"
-                    class="flex flex-col rounded-[24px] bg-white px-5 pt-5 shadow-card"
+                    class="flex flex-col rounded-[20px] bg-white px-3 pt-4 shadow-card sm:rounded-[24px] sm:px-5 sm:pt-5"
                     :class="sensor.type === 'temperature' ? 'ring-2 ring-[#5BA8FF]/35' : ''"
                 >
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 sm:gap-3">
                         <span
-                            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+                            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full sm:h-11 sm:w-11"
                             :class="themeFor(sensor.type).iconWrap"
                         >
                             <MetricIcon :type="sensor.type" />
                         </span>
-                        <p class="text-sm font-semibold text-[#0A1F44]">{{ sensor.name }}</p>
+                        <p class="truncate text-xs font-semibold text-[#0A1F44] sm:text-sm">{{ sensor.name }}</p>
                     </div>
 
-                    <div class="mt-5 flex flex-1 flex-col items-center text-center">
-                        <p class="text-[32px] font-extrabold leading-none tracking-tight text-[#0A1F44]">
+                    <div class="mt-3 flex flex-1 flex-col items-center text-center sm:mt-5">
+                        <p class="text-[26px] font-extrabold leading-none tracking-tight text-[#0A1F44] sm:text-[32px]">
                             <template v-if="sensor.value !== null">
                                 {{ formatValue(sensor.value) }}
-                                <span class="align-super text-base font-bold">{{ sensor.unit }}</span>
+                                <span class="align-super text-sm font-bold sm:text-base">{{ sensor.unit }}</span>
                             </template>
                             <template v-else>--</template>
                         </p>
                         <span
-                            class="mt-3 rounded-full px-3.5 py-1 text-xs font-bold"
+                            class="mt-2 rounded-full px-2.5 py-1 text-[11px] font-bold sm:mt-3 sm:px-3.5 sm:text-xs"
                             :class="{
                                 'bg-[#E9F8EE] text-[#22C55E]': sensor.status === 'ok',
                                 'bg-amber-50 text-amber-600': sensor.status === 'low' || sensor.status === 'high',
@@ -569,12 +569,12 @@ const setHours = (hours) => {
                         >
                             {{ statusLabel[sensor.status] }}
                         </span>
-                        <p class="mt-2 text-xs text-[#6E7C91]">
+                        <p class="mt-2 text-[10px] leading-4 text-[#6E7C91] sm:text-xs">
                             Rango: {{ sensor.min_threshold ?? '—' }} – {{ sensor.max_threshold ?? '—' }} {{ sensor.unit }}
                         </p>
                     </div>
 
-                    <div class="-mx-5 mt-4">
+                    <div class="-mx-3 mt-3 sm:-mx-5 sm:mt-4">
                         <Sparkline
                             :values="sensor.sparkline"
                             :color="themeFor(sensor.type).color"
@@ -586,32 +586,34 @@ const setHours = (hours) => {
 
             <div class="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
                 <div class="space-y-4">
-                    <section class="hl-card p-5">
-                        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <h2 class="text-lg font-bold text-hl-navy">Historial de lecturas</h2>
-                                <p class="text-sm text-slate-400">
+                    <section class="hl-card p-4 sm:p-5">
+                        <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                            <div class="min-w-0">
+                                <h2 class="text-base font-bold text-hl-navy sm:text-lg">Historial de lecturas</h2>
+                                <p class="text-xs text-slate-400 sm:text-sm">
                                     Última lectura:
                                     <span class="font-semibold text-hl-navy">{{ lastReadingDate }} {{ lastReadingTime }}</span>
                                 </p>
                             </div>
-                            <div class="flex rounded-full bg-slate-100 p-1">
-                                <button
-                                    v-for="range in ranges"
-                                    :key="range.hours"
-                                    type="button"
-                                    class="rounded-full px-3 py-1.5 text-xs font-bold transition"
-                                    :class="hours === range.hours ? 'bg-white text-hl-blue shadow-sm' : 'text-slate-500 hover:text-hl-navy'"
-                                    @click="setHours(range.hours)"
-                                >
-                                    {{ range.label }}
-                                </button>
+                            <div class="-mx-1 overflow-x-auto px-1">
+                                <div class="inline-flex min-w-max rounded-full bg-slate-100 p-1">
+                                    <button
+                                        v-for="range in ranges"
+                                        :key="range.hours"
+                                        type="button"
+                                        class="rounded-full px-3 py-1.5 text-xs font-bold transition"
+                                        :class="hours === range.hours ? 'bg-white text-hl-blue shadow-sm' : 'text-slate-500 hover:text-hl-navy'"
+                                        @click="setHours(range.hours)"
+                                    >
+                                        {{ range.label }}
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div v-if="!chart.labels?.length" class="flex h-72 items-center justify-center text-sm text-slate-400">
+                        <div v-if="!chart.labels?.length" class="flex h-56 items-center justify-center px-2 text-center text-sm text-slate-400 sm:h-72">
                             Esperando lecturas del ESP32. Cuando envíe temperatura, aparecerá aquí.
                         </div>
-                        <div v-else class="h-72">
+                        <div v-else class="h-56 sm:h-72">
                             <p v-if="chart.fallback" class="mb-3 text-xs font-medium text-amber-600">
                                 No hay lecturas en este periodo. Mostrando las últimas temperaturas guardadas.
                             </p>
@@ -619,9 +621,9 @@ const setHours = (hours) => {
                         </div>
                     </section>
 
-                    <section class="relative overflow-hidden rounded-[24px] p-5 shadow-card" style="background: #FFFCFA;">
-                        <div class="relative z-10 flex items-start gap-4 pr-16">
-                            <span class="relative mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center">
+                    <section class="relative overflow-hidden rounded-[24px] p-4 shadow-card sm:p-5" style="background: #FFFCFA;">
+                        <div class="relative z-10 flex items-start gap-3 pr-10 sm:gap-4 sm:pr-16">
+                            <span class="relative mt-0.5 hidden h-12 w-12 shrink-0 items-center justify-center sm:flex">
                                 <span class="absolute inset-[-7px] rounded-full bg-[#FFB067] opacity-45 blur-[10px]" />
                                 <span class="relative flex h-12 w-12 items-center justify-center rounded-full bg-[#FFE8D2] text-[#E88922]">
                                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
@@ -630,13 +632,14 @@ const setHours = (hours) => {
                                 </span>
                             </span>
                             <div class="min-w-0 flex-1">
-                                <div class="flex flex-wrap items-center justify-between gap-2">
-                                    <h3 class="text-sm font-bold text-[#1A2B56]">{{ tipSourceLabel }}</h3>
-                                    <div class="flex justify-center">
-                                        <StatusGauge :percent="overall.percent" :tone="overall.tone" :size="72" />
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <h3 class="text-sm font-bold text-[#1A2B56]">{{ tipSourceLabel }}</h3>
+                                        <p class="mt-1 text-xs font-semibold text-slate-500">{{ overall.label }} · {{ overall.detail }}</p>
                                     </div>
+                                    <StatusGauge :percent="overall.percent" :tone="overall.tone" :size="56" class="shrink-0 sm:hidden" />
+                                    <StatusGauge :percent="overall.percent" :tone="overall.tone" :size="72" class="hidden shrink-0 sm:block" />
                                 </div>
-                                <p class="mt-1 text-xs font-semibold text-slate-500">{{ overall.label }} · {{ overall.detail }}</p>
                                 <p class="mt-2 text-sm leading-6 text-[#1A2B56]">{{ tip }}</p>
                                 <div class="mt-3 flex flex-wrap gap-3">
                                     <button
@@ -656,18 +659,18 @@ const setHours = (hours) => {
                                 </div>
                             </div>
                         </div>
-                        <TipPlants />
+                        <TipPlants class="max-sm:scale-75 max-sm:origin-bottom-right" />
                     </section>
                 </div>
 
                 <aside class="space-y-4">
-                    <section class="hl-card p-5">
-                        <div class="flex items-start justify-between gap-3">
-                            <div>
-                                <h2 class="text-lg font-bold text-hl-navy">Cultivo activo</h2>
-                                <p class="mt-1 text-sm text-slate-400">Selecciona y edita rangos sin salir del Dashboard.</p>
+                    <section class="hl-card p-4 sm:p-5">
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                            <div class="min-w-0">
+                                <h2 class="text-base font-bold text-hl-navy sm:text-lg">Cultivo activo</h2>
+                                <p class="mt-1 text-sm text-slate-400">Edita rangos sin salir del Dashboard.</p>
                             </div>
-                            <span class="rounded-full bg-hl-blue/10 px-2.5 py-1 text-[11px] font-bold text-hl-blue">
+                            <span class="w-fit shrink-0 rounded-full bg-hl-blue/10 px-2.5 py-1 text-[11px] font-bold text-hl-blue">
                                 {{ device?.active_crop_label || 'Sin cultivo' }}
                             </span>
                         </div>
@@ -676,7 +679,7 @@ const setHours = (hours) => {
                             Tipo de cultivo
                             <select
                                 v-model="cropForm.crop"
-                                class="mt-1 w-full rounded-xl border-slate-200 text-sm font-semibold text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                                class="mt-1 w-full rounded-xl border-slate-200 text-base font-semibold text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm"
                             >
                                 <option v-for="crop in crops" :key="crop.id" :value="crop.id">
                                     {{ crop.label }}
@@ -688,27 +691,27 @@ const setHours = (hours) => {
                         <div class="mt-4 grid grid-cols-2 gap-3">
                             <label class="text-xs font-medium text-slate-500">
                                 Temp mín
-                                <input v-model.number="cropForm.temperature_min" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                                <input v-model.number="cropForm.temperature_min" type="number" step="0.1" inputmode="decimal" class="mt-1 w-full rounded-xl border-slate-200 text-base shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm" />
                             </label>
                             <label class="text-xs font-medium text-slate-500">
                                 Temp máx
-                                <input v-model.number="cropForm.temperature_max" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                                <input v-model.number="cropForm.temperature_max" type="number" step="0.1" inputmode="decimal" class="mt-1 w-full rounded-xl border-slate-200 text-base shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm" />
                             </label>
                             <label class="text-xs font-medium text-slate-500">
                                 pH mín
-                                <input v-model.number="cropForm.ph_min" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                                <input v-model.number="cropForm.ph_min" type="number" step="0.1" inputmode="decimal" class="mt-1 w-full rounded-xl border-slate-200 text-base shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm" />
                             </label>
                             <label class="text-xs font-medium text-slate-500">
                                 pH máx
-                                <input v-model.number="cropForm.ph_max" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                                <input v-model.number="cropForm.ph_max" type="number" step="0.1" inputmode="decimal" class="mt-1 w-full rounded-xl border-slate-200 text-base shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm" />
                             </label>
                             <label class="text-xs font-medium text-slate-500">
                                 Siembra
-                                <input v-model="cropForm.planted_at" type="date" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                                <input v-model="cropForm.planted_at" type="date" class="mt-1 w-full rounded-xl border-slate-200 text-base shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm" />
                             </label>
                             <label class="text-xs font-medium text-slate-500">
                                 Días cosecha
-                                <input v-model.number="cropForm.harvest_days" type="number" min="7" max="180" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                                <input v-model.number="cropForm.harvest_days" type="number" min="7" max="180" inputmode="numeric" class="mt-1 w-full rounded-xl border-slate-200 text-base shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm" />
                             </label>
                         </div>
 

@@ -58,7 +58,7 @@ const navItems = [
 
 <template>
     <div class="hydrolab-shell min-h-screen">
-        <div class="relative z-10 mx-auto flex min-h-screen max-w-[1600px] gap-5 p-4 lg:p-5">
+        <div class="relative z-10 mx-auto flex min-h-screen max-w-[1600px] gap-5 p-3 pb-24 sm:p-4 lg:p-5 lg:pb-5">
             <div
                 v-if="sidebarOpen"
                 class="fixed inset-0 z-40 bg-hl-navy/30 backdrop-blur-sm lg:hidden"
@@ -66,7 +66,7 @@ const navItems = [
             />
 
             <aside
-                class="z-50 flex w-[270px] shrink-0 flex-col overflow-y-auto rounded-[28px] p-5 shadow-sidebar transition-transform duration-200 max-lg:fixed max-lg:inset-y-4 max-lg:left-4 lg:sticky lg:top-5 lg:h-[calc(100vh-2.5rem)]"
+                class="z-50 flex w-[min(270px,calc(100vw-2rem))] shrink-0 flex-col overflow-y-auto rounded-[28px] p-5 shadow-sidebar transition-transform duration-200 max-lg:fixed max-lg:inset-y-4 max-lg:left-4 lg:sticky lg:top-5 lg:h-[calc(100vh-2.5rem)]"
                 :class="sidebarOpen ? 'translate-x-0' : '-translate-x-[120%] lg:translate-x-0'"
                 style="background: linear-gradient(180deg, #FFFFFF 0%, #FFF6EE 100%);"
             >
@@ -157,28 +157,28 @@ const navItems = [
             </aside>
 
             <div class="flex min-w-0 flex-1 flex-col">
-                <header class="mb-5 flex items-start justify-between gap-4">
-                    <div class="flex items-start gap-3">
+                <header class="mb-4 flex flex-col gap-3 sm:mb-5 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
+                    <div class="flex min-w-0 items-start gap-3">
                         <button
                             type="button"
-                            class="mt-1 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-card lg:hidden"
+                            class="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white shadow-card lg:hidden"
                             @click="sidebarOpen = true"
                         >
                             <svg class="h-5 w-5 text-hl-navy" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                                 <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16" />
                             </svg>
                         </button>
-                        <div>
+                        <div class="min-w-0 flex-1">
                             <slot name="header" />
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+                    <div class="flex flex-wrap items-center gap-2 sm:justify-end sm:gap-3">
                         <slot name="actions" />
 
                         <button
                             type="button"
-                            class="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/70 text-slate-500 shadow-card hl-glass"
+                            class="relative hidden h-11 w-11 items-center justify-center rounded-2xl border border-white/70 text-slate-500 shadow-card hl-glass sm:flex"
                             aria-label="Notificaciones"
                         >
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
@@ -189,7 +189,7 @@ const navItems = [
 
                         <Dropdown align="right" width="48">
                             <template #trigger>
-                                <button type="button" class="hl-glass hidden items-center gap-2 rounded-2xl border border-white/70 py-1.5 pl-1.5 pr-3 shadow-card sm:flex">
+                                <button type="button" class="hl-glass hidden items-center gap-2 rounded-2xl border border-white/70 py-1.5 pl-1.5 pr-3 shadow-card md:flex">
                                     <span class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-hl-blue to-sky-400 text-xs font-bold text-white">
                                         {{ initials }}
                                     </span>
@@ -207,10 +207,46 @@ const navItems = [
                     </div>
                 </header>
 
-                <main class="flex-1 pb-4">
+                <main class="flex-1 pb-2">
                     <slot />
                 </main>
             </div>
         </div>
+
+        <nav
+            class="fixed inset-x-0 bottom-0 z-40 border-t border-white/60 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(26,43,72,0.08)] backdrop-blur-md lg:hidden"
+            aria-label="Navegación móvil"
+        >
+            <div class="mx-auto grid max-w-lg grid-cols-4 gap-1">
+                <Link
+                    v-for="item in navItems.filter((entry) => entry.icon !== 'settings')"
+                    :key="`mobile-${item.href}`"
+                    :href="route(item.href)"
+                    class="flex flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold transition"
+                    :class="
+                        route().current(item.current)
+                            ? 'bg-[#E8F1FF] text-[#2F80ED]'
+                            : 'text-[#1A2B56]/70'
+                    "
+                >
+                    <svg v-if="item.icon === 'dashboard'" class="h-5 w-5" viewBox="0 0 24 24" :fill="route().current(item.current) ? 'currentColor' : 'none'" :stroke="route().current(item.current) ? 'none' : 'currentColor'" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.2 10.6 12 4.2l7.8 6.4V20a1 1 0 0 1-1 1h-4.6v-6.2H9.8V21H5.2a1 1 0 0 1-1-1v-9.4Z" />
+                    </svg>
+                    <svg v-else-if="item.icon === 'history'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <rect x="4" y="4.5" width="16" height="15" rx="2.2" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 15.2 10.2 12l2.6 2.2 3.7-5" />
+                    </svg>
+                    <svg v-else-if="item.icon === 'analysis'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.2 14.2c-1.7-.8-2.7-2.3-2.7-4.2A5.5 5.5 0 0 1 12 4.6a5.5 5.5 0 0 1 6.5 5.4c0 1.9-1 3.4-2.7 4.2" />
+                        <path stroke-linecap="round" d="M12 4.6v5.2M9.4 8.4h5.2" />
+                    </svg>
+                    <svg v-else class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <rect x="7.2" y="7.2" width="9.6" height="9.6" rx="1.6" />
+                        <path stroke-linecap="round" d="M9.4 7.2V4.6M12 7.2V4.6M14.6 7.2V4.6M9.4 19.4v-2.6M12 19.4v-2.6M14.6 19.4v-2.6" />
+                    </svg>
+                    <span class="truncate">{{ item.label.replace('Análisis IA', 'Análisis') }}</span>
+                </Link>
+            </div>
+        </nav>
     </div>
 </template>

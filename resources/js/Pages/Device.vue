@@ -282,10 +282,10 @@ const themes = {
                 </div>
             </section>
 
-            <section class="hl-card p-6">
-                <div class="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                        <h3 class="text-lg font-bold text-hl-navy">Cultivo y rangos</h3>
+            <section class="hl-card p-4 sm:p-6">
+                <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                        <h3 class="text-base font-bold text-hl-navy sm:text-lg">Cultivo y rangos</h3>
                         <p class="mt-1 text-sm text-slate-400">
                             Elige el cultivo, ajusta temperatura y pH a mano, guarda, y Hydrolab comparará cada lectura del ESP32 con esos valores.
                         </p>
@@ -315,7 +315,7 @@ const themes = {
                                 v-model="newCropForm.name"
                                 type="text"
                                 placeholder="Ej. Espinaca, Fresa, Rúcula"
-                                class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                                class="mt-1 w-full rounded-xl border-slate-200 text-base text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm"
                             />
                             <p v-if="newCropForm.errors.name" class="mt-1 text-xs text-red-500">{{ newCropForm.errors.name }}</p>
                         </label>
@@ -324,28 +324,28 @@ const themes = {
                             <textarea
                                 v-model="newCropForm.notes"
                                 rows="2"
-                                class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                                class="mt-1 w-full rounded-xl border-slate-200 text-base text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm"
                             />
                         </label>
                         <label class="text-xs font-medium text-slate-500">
                             Temp mín (°C)
-                            <input v-model.number="newCropForm.temperature_min" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                            <input v-model.number="newCropForm.temperature_min" type="number" step="0.1" inputmode="decimal" class="mt-1 w-full rounded-xl border-slate-200 text-base shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm" />
                         </label>
                         <label class="text-xs font-medium text-slate-500">
                             Temp máx (°C)
-                            <input v-model.number="newCropForm.temperature_max" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                            <input v-model.number="newCropForm.temperature_max" type="number" step="0.1" inputmode="decimal" class="mt-1 w-full rounded-xl border-slate-200 text-base shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm" />
                         </label>
                         <label class="text-xs font-medium text-slate-500">
                             pH mín
-                            <input v-model.number="newCropForm.ph_min" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                            <input v-model.number="newCropForm.ph_min" type="number" step="0.1" inputmode="decimal" class="mt-1 w-full rounded-xl border-slate-200 text-base shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm" />
                         </label>
                         <label class="text-xs font-medium text-slate-500">
                             pH máx
-                            <input v-model.number="newCropForm.ph_max" type="number" step="0.1" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                            <input v-model.number="newCropForm.ph_max" type="number" step="0.1" inputmode="decimal" class="mt-1 w-full rounded-xl border-slate-200 text-base shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm" />
                         </label>
                         <label class="text-xs font-medium text-slate-500 md:col-span-2">
                             Días a cosecha
-                            <input v-model.number="newCropForm.harvest_days" type="number" min="7" max="180" class="mt-1 w-full rounded-xl border-slate-200 text-sm shadow-sm focus:border-hl-blue focus:ring-hl-blue" />
+                            <input v-model.number="newCropForm.harvest_days" type="number" min="7" max="180" inputmode="numeric" class="mt-1 w-full rounded-xl border-slate-200 text-base shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm" />
                         </label>
                     </div>
                     <button
@@ -400,7 +400,7 @@ const themes = {
                                     v-model.number="cropForm.temperature_min"
                                     type="number"
                                     step="0.1"
-                                    class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                                    class="mt-1 w-full rounded-xl border-slate-200 text-base text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm"
                                 />
                             </label>
                             <label class="text-xs font-medium text-slate-500">
@@ -409,7 +409,7 @@ const themes = {
                                     v-model.number="cropForm.temperature_max"
                                     type="number"
                                     step="0.1"
-                                    class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                                    class="mt-1 w-full rounded-xl border-slate-200 text-base text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm"
                                 />
                             </label>
                         </div>
@@ -427,7 +427,7 @@ const themes = {
                                     v-model.number="cropForm.ph_min"
                                     type="number"
                                     step="0.1"
-                                    class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                                    class="mt-1 w-full rounded-xl border-slate-200 text-base text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm"
                                 />
                             </label>
                             <label class="text-xs font-medium text-slate-500">
@@ -436,7 +436,7 @@ const themes = {
                                     v-model.number="cropForm.ph_max"
                                     type="number"
                                     step="0.1"
-                                    class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                                    class="mt-1 w-full rounded-xl border-slate-200 text-base text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm"
                                 />
                             </label>
                         </div>
@@ -452,7 +452,7 @@ const themes = {
                         <input
                             v-model="cropForm.planted_at"
                             type="date"
-                            class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                            class="mt-1 w-full rounded-xl border-slate-200 text-base text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm"
                         />
                         <p v-if="cropForm.errors.planted_at" class="mt-2 text-xs text-red-500">{{ cropForm.errors.planted_at }}</p>
                     </label>
@@ -463,7 +463,7 @@ const themes = {
                             type="number"
                             min="7"
                             max="180"
-                            class="mt-1 w-full rounded-xl border-slate-200 text-sm text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue"
+                            class="mt-1 w-full rounded-xl border-slate-200 text-base text-hl-navy shadow-sm focus:border-hl-blue focus:ring-hl-blue sm:text-sm"
                         />
                         <p class="mt-2 text-[11px] text-slate-400">Sugerido para este cultivo: {{ selectedCrop?.harvest_days ?? '—' }} días</p>
                         <p v-if="cropForm.errors.harvest_days" class="mt-2 text-xs text-red-500">{{ cropForm.errors.harvest_days }}</p>
